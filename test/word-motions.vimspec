@@ -1,0 +1,118 @@
+scriptencoding utf-8
+" the text 'themis#suite()' is required to run test#viml#themis#test_file()
+Describe word-motions
+
+let Expect = function(themis#helper('expect'))
+
+function! s:init_test_buffer()
+  new | only!
+  let lines = readfile('test/sample_text')
+  for lnum in range(1, len(lines))
+    call setline(lnum, lines[lnum - 1])
+  endfor
+endfunction
+
+function! s:getIndicesOfKeywordChars(line, motion)
+  " @param {string} line
+  " @param {'w' | 'b' | 'e' | 'ge'} motion
+  "   'w'  - get start positions of matches and return their indices
+  "   'b'  - get start positions of matches and return their indices reversed
+  "   'e'  - get end positions of matches and return their indices
+  "   'ge' - get end positions of matches and return their indices reversed
+  " @return {list<number>} - character indices of keyword characters
+  let indices = []
+  let Put = function(a:motion ==# 'w' || a:motion ==# 'e' ? 'add' : 'insert', [indices])
+  let pos = matchstrpos(a:line, '\k\+') " 0-based byte index
+  if a:motion ==# 'w' || a:motion ==# 'b'
+    while pos[0] !=# ''
+      " matchstrpos(...)[1] gives the 0-based byte index of the starting position of the match
+      call Put(charidx(a:line, pos[1]) + 1) " convert 0-based character index to 1-based character index
+      let pos = matchstrpos(a:line, '\k\+', pos[2])
+    endwhile
+  else
+    while pos[0] !=# ''
+      " matchstrpos(...)[2] gives the 0-based byte index of the first character AFTER the match
+      call Put(charidx(a:line, pos[2])) " equal to 1-based character index
+      let pos = matchstrpos(a:line, '\k\+', pos[2])
+    endwhile
+  endif
+  return indices
+endfunction
+
+Context <Plug>(craftyjump-word-w)
+
+  Before
+    call s:init_test_buffer()
+    normal! gg0
+  End
+
+  It moves forward to the start of word
+    let indices = s:getIndicesOfKeywordChars(getline(1), 'w')
+    " start moving from the first character of the line, which is the initial position of the cursor
+    if get(indices, 0, -1) == 1 | let indices = indices[1 :] | endif
+    for index in indices
+      execute "normal \<Plug>(craftyjump-word-w)"
+      call Expect('.').to_be_at_position([1, index])
+    endfor
+  End
+
+End
+
+Context <Plug>(craftyjump-word-b)
+
+  Before
+    call s:init_test_buffer()
+    normal! gg$
+  End
+
+  It moves backward to the start of word
+    let indices = s:getIndicesOfKeywordChars(getline(1), 'b')
+    " start moving from the last character of the line, which is the initial position of the cursor
+    if get(indices, 0, -1) == strcharlen(getline(1)) | let indices = indices[1 :] | endif
+    for index in indices
+      execute "normal \<Plug>(craftyjump-word-b)"
+      call Expect('.').to_be_at_position([1, index])
+    endfor
+  End
+
+End
+
+Context <Plug>(craftyjump-word-e)
+
+  Before
+    call s:init_test_buffer()
+    normal! gg0
+  End
+
+  It moves forward to the end of word
+    let indices = s:getIndicesOfKeywordChars(getline(1), 'e')
+    " start moving from the first character of the line, which is the initial position of the cursor
+    if get(indices, 0, -1) == 1 | let indices = indices[1 :] | endif
+    for index in indices
+      execute "normal \<Plug>(craftyjump-word-e)"
+      call Expect('.').to_be_at_position([1, index])
+    endfor
+  End
+
+End
+
+Context <Plug>(craftyjump-word-ge)
+
+  Before
+    call s:init_test_buffer()
+    normal! gg$
+  End
+
+  It moves backward to the end of word
+    let indices = s:getIndicesOfKeywordChars(getline(1), 'ge')
+    " start moving from the last character of the line, which is the initial position of the cursor
+    if get(indices, 0, -1) == strcharlen(getline(1)) | let indices = indices[1 :] | endif
+    for index in indices
+      execute "normal \<Plug>(craftyjump-word-ge)"
+      call Expect('.').to_be_at_position([1, index])
+    endfor
+  End
+
+End
+
+End
