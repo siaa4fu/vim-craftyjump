@@ -1,17 +1,14 @@
-call themis#option('runtimepath', fnamemodify(expand('<sfile>'), ':h:h'))
+vim9script
+scriptencoding utf-8
 
-call themis#helper('command').with(themis#helper('assert'))
+themis#option('runtimepath', fnamemodify(expand('<sfile>'), ':h:h'))
 
-" @param {string} expr - get the position for {expr} (for possible strings of {expr} see line())
-" @param {list<number>} expect - [lnum, col] of expected position
-"                                the column number is a 1-based character index, not a byte index
-call themis#helper#expect#define_matcher('to_be_at_position',
-      \ { expr, expect -> getcharpos(expr)[1:2] ==# expect },
-      \ { not, name, expr, expect -> printf(
-      \   'Expected the ''%s'' position %s to be at %s. (but %s)',
-      \   expr,
-      \   not ? 'not ' : '',
-      \   string(expect),
-      \   string(getcharpos(expr)[1:2])
-      \ )}
-      \)
+# @param {string} expr - get the position for {expr} (for possible strings of {expr} see line())
+# @param {list<number>} expect - [lnum, col] of expected position
+#                                the column number is a 1-based character index, not a byte index
+themis#helper#expect#define_matcher('to_be_at_position',
+  (expr, expect) => getcharpos(expr)[1 : 2] ==# expect,
+  (not, name, expr, expect) =>
+    $'Expected the ''{expr}'' position ' .. (not ? 'not ' : '') .. 'to be at ' .. string(expect) .. '.'
+    .. ' (but ' .. string(getcharpos(expr)[1 : 2]) .. ')'
+)
