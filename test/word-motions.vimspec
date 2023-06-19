@@ -12,7 +12,7 @@ function! s:init_test_buffer()
   endfor
 endfunction
 
-function! s:getIndicesOfKeywordChars(line, motion)
+function! s:getKwdIndices(line, motion)
   " @param {string} line
   " @param {'w' | 'b' | 'e' | 'ge'} motion
   "   'w'  - get start positions of matches and return their indices
@@ -39,59 +39,68 @@ function! s:getIndicesOfKeywordChars(line, motion)
   return indices
 endfunction
 
+function! s:moveInLine(lnum, motion, indices) closure
+  " @param {number} lnum - move in the line with the specified line number
+  " @param {'w' | 'b' | 'e' | 'ge'} motion
+  " @param {list<number>} indices - character indices of keyword characters
+  for index in a:indices
+    execute "normal \<Plug>(craftyjump-word-" . a:motion . ')'
+    call Expect('.').to_be_at_position([a:lnum, index])
+  endfor
+endfunction
+
 Context simple moving
   Before
     call s:init_test_buffer()
-    normal! gg
   End
   It moves forward to the start of word (w)
-    normal! 0
-    let indices = s:getIndicesOfKeywordChars(getline(1), 'w')
-    " start moving from the first character of the line, which is the initial position of the cursor
-    if get(indices, 0, -1) == 1 | let indices = indices[1 :] | endif
-    for index in indices
-      execute "normal \<Plug>(craftyjump-word-w)"
-      call Expect('.').to_be_at_position([1, index])
-    endfor
+    " start moving from the first character of the line 1
+    normal! gg0
+    " line 1 (skip the initial position)
+    call s:moveInLine(1, 'w', {indices ->
+          \ get(indices, 0, -1) == 1 ? indices[1 :] : indices
+          \}(s:getKwdIndices(getline(1), 'w')))
+    " line 2
+    call s:moveInLine(2, 'w', s:getKwdIndices(getline(2), 'w'))
     " extra move
     execute "normal \<Plug>(craftyjump-word-w)"
-    call Expect('.').to_be_at_position([1, strcharlen(getline(1))])
+    call Expect('.').to_be_at_position([2, strcharlen(getline(2))])
   End
   It moves backward to the start of word (b)
-    normal! $
-    let indices = s:getIndicesOfKeywordChars(getline(1), 'b')
-    " start moving from the last character of the line, which is the initial position of the cursor
-    if get(indices, 0, -1) == strcharlen(getline(1)) | let indices = indices[1 :] | endif
-    for index in indices
-      execute "normal \<Plug>(craftyjump-word-b)"
-      call Expect('.').to_be_at_position([1, index])
-    endfor
+    " start moving from the last character of the line 2
+    normal! 2gg$
+    " line 2 (skip the initial position)
+    call s:moveInLine(2, 'b', {indices ->
+          \ get(indices, 0, -1) == strcharlen(getline(2)) ? indices[1 :] : indices
+          \}(s:getKwdIndices(getline(2), 'b')))
+    " line 1
+    call s:moveInLine(1, 'b', s:getKwdIndices(getline(1), 'b'))
     " extra move
     execute "normal \<Plug>(craftyjump-word-b)"
     call Expect('.').to_be_at_position([1, 1])
   End
   It moves forward to the end of word (e)
-    normal! 0
-    let indices = s:getIndicesOfKeywordChars(getline(1), 'e')
-    " start moving from the first character of the line, which is the initial position of the cursor
-    if get(indices, 0, -1) == 1 | let indices = indices[1 :] | endif
-    for index in indices
-      execute "normal \<Plug>(craftyjump-word-e)"
-      call Expect('.').to_be_at_position([1, index])
-    endfor
+    " start moving from the first character of the line 1
+    normal! gg0
+    " line 1 (skip the initial position)
+    call s:moveInLine(1, 'e', {indices ->
+          \ get(indices, 0, -1) == 1 ? indices[1 :] : indices
+          \}(s:getKwdIndices(getline(1), 'e')))
+    " line 2
+    call s:moveInLine(2, 'e', s:getKwdIndices(getline(2), 'e'))
     " extra move
     execute "normal \<Plug>(craftyjump-word-e)"
-    call Expect('.').to_be_at_position([1, strcharlen(getline(1))])
+    call Expect('.').to_be_at_position([2, strcharlen(getline(2))])
   End
   It moves backward to the end of word (ge)
-    normal! $
-    let indices = s:getIndicesOfKeywordChars(getline(1), 'ge')
-    " start moving from the last character of the line, which is the initial position of the cursor
-    if get(indices, 0, -1) == strcharlen(getline(1)) | let indices = indices[1 :] | endif
-    for index in indices
-      execute "normal \<Plug>(craftyjump-word-ge)"
-      call Expect('.').to_be_at_position([1, index])
-    endfor
+    " start moving from the last character of the line 2
+    normal! 2gg$
+    " line 2 (skip the initial position)
+    call s:moveInLine(2, 'ge', {indices ->
+          \ get(indices, 0, -1) == strcharlen(getline(2)) ? indices[1 :] : indices
+          \}(s:getKwdIndices(getline(2), 'ge')))
+    " line 1
+    call s:moveInLine(1, 'ge', s:getKwdIndices(getline(1), 'ge'))
     " extra move
     execute "normal \<Plug>(craftyjump-word-ge)"
     call Expect('.').to_be_at_position([1, 1])
