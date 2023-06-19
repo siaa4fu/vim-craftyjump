@@ -45,7 +45,7 @@ function! s:moveInLine(lnum, motion, indices)
   " @param {list<number>} indices - character indices of keyword characters
   for index in a:indices
     execute "normal \<Plug>(craftyjump-word-" . a:motion . ')'
-    call s:expect('.').to_be_at_position([a:lnum, index])
+    call s:expect(v:null).to_be_at_position([a:lnum, index])
   endfor
 endfunction
 
@@ -64,7 +64,7 @@ Context simple moving
     call s:moveInLine(2, 'w', s:getKwdIndices(getline(2), 'w'))
     " extra move
     execute "normal \<Plug>(craftyjump-word-w)"
-    call s:expect('.').to_be_at_position([2, strcharlen(getline(2))])
+    call s:expect(v:null).to_be_at_position([2, strcharlen(getline(2))])
   End
   It moves backward to the start of word (b)
     " start moving from the last character of the line 2
@@ -77,7 +77,7 @@ Context simple moving
     call s:moveInLine(1, 'b', s:getKwdIndices(getline(1), 'b'))
     " extra move
     execute "normal \<Plug>(craftyjump-word-b)"
-    call s:expect('.').to_be_at_position([1, 1])
+    call s:expect(v:null).to_be_at_position([1, 1])
   End
   It moves forward to the end of word (e)
     " start moving from the first character of the line 1
@@ -90,7 +90,7 @@ Context simple moving
     call s:moveInLine(2, 'e', s:getKwdIndices(getline(2), 'e'))
     " extra move
     execute "normal \<Plug>(craftyjump-word-e)"
-    call s:expect('.').to_be_at_position([2, strcharlen(getline(2))])
+    call s:expect(v:null).to_be_at_position([2, strcharlen(getline(2))])
   End
   It moves backward to the end of word (ge)
     " start moving from the last character of the line 2
@@ -103,7 +103,7 @@ Context simple moving
     call s:moveInLine(1, 'ge', s:getKwdIndices(getline(1), 'ge'))
     " extra move
     execute "normal \<Plug>(craftyjump-word-ge)"
-    call s:expect('.').to_be_at_position([1, 1])
+    call s:expect(v:null).to_be_at_position([1, 1])
   End
 End
 
