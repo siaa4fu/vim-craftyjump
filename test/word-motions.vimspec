@@ -22,18 +22,29 @@ function! s:getKwdIndices(line, motion)
   " @return {list<number>} - character indices of keyword characters
   let indices = []
   let Put = function(a:motion ==# 'w' || a:motion ==# 'e' ? 'add' : 'insert', [indices])
-  let pos = matchstrpos(a:line, '\k\+') " 0-based byte index
+  " partial support for word motions in Japanese (:h word)
+  let ptn_word = join([
+        "\ letters, digits and underscores
+        \  '\w\+',
+        "\ Hiragana
+        \  '[\u3040-\u309f]\+',
+        "\ Katakana
+        \  '[\u30a0-\u30ff]\+',
+        "\ other non-blank characters (including CJK Ideographs)
+        \  '\%(\W\&[^\u3040-\u309f\u30a0-\u30ff]\&\k\)\+'
+        \], '\|')
+  let pos = matchstrpos(a:line, ptn_word) " 0-based byte index
   if a:motion ==# 'w' || a:motion ==# 'b'
     while pos[0] !=# ''
       " matchstrpos(...)[1] gives the 0-based byte index of the starting position of the match
       call Put(charidx(a:line, pos[1]) + 1) " convert 0-based character index to 1-based character index
-      let pos = matchstrpos(a:line, '\k\+', pos[2])
+      let pos = matchstrpos(a:line, ptn_word, pos[2])
     endwhile
   else
     while pos[0] !=# ''
       " matchstrpos(...)[2] gives the 0-based byte index of the first character AFTER the match
       call Put(charidx(a:line, pos[2])) " equal to 1-based character index
-      let pos = matchstrpos(a:line, '\k\+', pos[2])
+      let pos = matchstrpos(a:line, ptn_word, pos[2])
     endwhile
   endif
   return indices
