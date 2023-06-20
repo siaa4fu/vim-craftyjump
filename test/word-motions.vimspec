@@ -50,17 +50,29 @@ function! s:getKwdIndices(line, motion)
   return indices
 endfunction
 
-function! s:moveInLine(lnum, motion, ...)
+function! s:moveInLine(lnum, motion, isInitialLine)
   " @param {number} lnum - move in the line with the specified line number
   " @param {'w' | 'b' | 'e' | 'ge'} motion
-  " @param {list<number>=?} a:1 - character indices of keyword characters
+  " @param {bool} isInitialLine - skip the initial position even if it is a keyword character
   " @return {number} - next line number
-  let indices = get(a:, 1, s:getKwdIndices(getline(a:lnum), a:motion))
-  for index in indices
-    execute "normal \<Plug>(craftyjump-word-" . a:motion . ')'
-    call s:expect(v:null).to_be_at_position([a:lnum, index])
-  endfor
-  return a:lnum + (a:motion ==# 'w' || a:motion ==# 'e' ? 1 : -1)
+  let isForward = a:motion ==# 'w' || a:motion ==# 'e' ? 1 : 0
+  let line = getline(a:lnum)
+  " skip if the line is blank
+  if line !=# ''
+    let indices = s:getKwdIndices(line, a:motion)
+    if isForward
+      " skip the initial position
+      if a:isInitialLine && get(indices, 0, -1) == 1 | let indices = indices[1 :] | endif
+    else
+      " skip the initial position
+      if a:isInitialLine && get(indices, 0, -1) == strcharlen(line) | let indices = indices[1 :] | endif
+    endif
+    for index in indices
+      execute "normal \<Plug>(craftyjump-word-" . a:motion . ')'
+      call s:expect(v:null).to_be_at_position([a:lnum, index])
+    endfor
+  endif
+  return a:lnum + (isForward ? 1 : -1)
 endfunction
 
 Context simple moving
@@ -70,12 +82,9 @@ Context simple moving
   It moves forward using 'w' from the first line
     let lnum = 1
     execute 'normal!' lnum . 'gg0'
-    " skip if the initial position is a keyword character
-    let lnum = s:moveInLine(lnum, 'w', {indices ->
-          \ get(indices, 0, -1) == 1 ? indices[1 :] : indices
-          \}(s:getKwdIndices(getline(lnum), 'w')))
+    let lnum = s:moveInLine(lnum, 'w', v:true)
     while lnum <= line('$')
-      let lnum = s:moveInLine(lnum, 'w')
+      let lnum = s:moveInLine(lnum, 'w', v:false)
     endwhile
     " extra move
     let lnum -= 1
@@ -85,12 +94,9 @@ Context simple moving
   It moves backward using 'b' from the last line
     let lnum = line('$')
     execute 'normal!' lnum . 'gg$'
-    " skip if the initial position is a keyword character
-    let lnum = s:moveInLine(lnum, 'b', {indices ->
-          \ get(indices, 0, -1) == strcharlen(getline(lnum)) ? indices[1 :] : indices
-          \}(s:getKwdIndices(getline(lnum), 'b')))
+    let lnum = s:moveInLine(lnum, 'b', v:true)
     while lnum > 0
-      let lnum = s:moveInLine(lnum, 'b')
+      let lnum = s:moveInLine(lnum, 'b', v:false)
     endwhile
     " extra move
     let lnum += 1
@@ -100,12 +106,9 @@ Context simple moving
   It moves forward using 'e' from the first line
     let lnum = 1
     execute 'normal!' lnum . 'gg0'
-    " skip if the initial position is a keyword character
-    let lnum = s:moveInLine(lnum, 'e', {indices ->
-          \ get(indices, 0, -1) == 1 ? indices[1 :] : indices
-          \}(s:getKwdIndices(getline(lnum), 'e')))
+    let lnum = s:moveInLine(lnum, 'e', v:true)
     while lnum <= line('$')
-      let lnum = s:moveInLine(lnum, 'e')
+      let lnum = s:moveInLine(lnum, 'e', v:false)
     endwhile
     " extra move
     let lnum -= 1
@@ -115,12 +118,9 @@ Context simple moving
   It moves backward using 'ge' from the last line
     let lnum = line('$')
     execute 'normal!' lnum . 'gg$'
-    " skip if the initial position is a keyword character
-    let lnum = s:moveInLine(lnum, 'ge', {indices ->
-          \ get(indices, 0, -1) == strcharlen(getline(2)) ? indices[1 :] : indices
-          \}(s:getKwdIndices(getline(lnum), 'ge')))
+    let lnum = s:moveInLine(lnum, 'ge', v:true)
     while lnum > 0
-      let lnum = s:moveInLine(lnum, 'ge')
+      let lnum = s:moveInLine(lnum, 'ge', v:false)
     endwhile
     " extra move
     let lnum += 1
