@@ -19,22 +19,25 @@ def IsForwardMotion(motion: string): bool # {{{
   endif
   return isForward
 enddef # }}}
-def IsKwdChar(pos: list<number>): bool # {{{
+def IsKwdChar(pos: list<number>, line = getline(pos[1])): bool # {{{
   # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
+  # @param {string=} line - the line of the cursor position
   # @return {bool} - whether the character under the cursor is a keyword character
-  return getline(pos[1])[pos[2] - 1] =~# '\k'
+  return line[pos[2] - 1] =~# '\k'
 enddef # }}}
-def IsAtLineEnd(pos: list<number>): bool # {{{
+def IsAtLineEnd(pos: list<number>, line = getline(pos[1])): bool # {{{
   # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
+  # @param {string=} line - the line of the cursor position
   # @return {bool} - whether the cursor is at the end of the line
   # return true if the characters to the right of the cursor are whitespaces only
-  return getline(pos[1])[pos[2] :] =~# '^\s*$'
+  return line[pos[2] :] =~# '^\s*$'
 enddef # }}}
-def IsAtLineStart(pos: list<number>): bool # {{{
+def IsAtLineStart(pos: list<number>, line = getline(pos[1])): bool # {{{
   # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
+  # @param {string=} line - the line of the cursor position
   # @return {bool} - whether the cursor is at the start of the line
   # return true if the characters to the left of the cursor are whitespaces only
-  return (pos[2] == 1 ? '' : getline(pos[1])[0 : pos[2] - 2]) =~# '^\s*$'
+  return (pos[2] == 1 ? '' : line[0 : pos[2] - 2]) =~# '^\s*$'
 enddef # }}}
 def MoveToKwdChar(motion: string): bool # {{{
   # @param {'w' | 'b' | 'e' | 'ge'} motion
@@ -42,6 +45,7 @@ def MoveToKwdChar(motion: string): bool # {{{
   const isForward = IsForwardMotion(motion)
   var isMoved: bool
   var oldpos = getcursorcharpos() # [0, lnum, charcol, off, curswant]
+  var oldline = getline(oldpos[1])
   while 1
     execute 'normal!' motion
     const newpos = getcursorcharpos()
@@ -49,12 +53,15 @@ def MoveToKwdChar(motion: string): bool # {{{
       # abort if the cursor could not move
       isMoved = v:false
       break
-    elseif oldpos[1] != newpos[1]
-      if isForward ? IsAtLineEnd(oldpos) : IsAtLineStart(oldpos)
+    endif
+    const line = getline(newpos[1])
+    if oldpos[1] != newpos[1]
+      if isForward ? IsAtLineEnd(oldpos, oldline) : IsAtLineStart(oldpos, oldline)
         # when the cursor moves from the edge of the line to another line
-        if getline(newpos[1]) =~# '^\s*$'
+        if line =~# '^\s*$'
           # skip blank lines
           oldpos = newpos
+          oldline = line
           continue
         endif
       else
@@ -66,14 +73,15 @@ def MoveToKwdChar(motion: string): bool # {{{
       endif
     endif
     # when the cursor moved within the same line or from the edge of the line
-    if IsKwdChar(newpos)
-        || (isForward ? IsAtLineEnd(newpos) : IsAtLineStart(newpos))
+    if IsKwdChar(newpos, line)
+        || (isForward ? IsAtLineEnd(newpos, line) : IsAtLineStart(newpos, line))
       # stop moving if the character under the cursor was a keyword character
       # or if the cursor moved to the edge of the line
       isMoved = v:true
       break
     endif
     oldpos = newpos
+    oldline = line
   endwhile
   return isMoved
 enddef # }}}
