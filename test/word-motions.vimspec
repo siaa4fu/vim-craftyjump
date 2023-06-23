@@ -63,9 +63,15 @@ function! s:moveInLine(lnum, motion, isInitialLine)
     if isForward
       " skip the initial position
       if a:isInitialLine && get(indices, 0, -1) == 1 | let indices = indices[1 :] | endif
+      " move to the last character of the line before moving to the next line
+      let lineEnd = strcharlen(matchstr(line, '^.\{-}\ze\s*$'))
+      if get(indices, -1, -1) != lineEnd | call add(indices, lineEnd) | endif
     else
       " skip the initial position
       if a:isInitialLine && get(indices, 0, -1) == strcharlen(line) | let indices = indices[1 :] | endif
+      " move to the first character of the line before moving to the previous line
+      let lineStart = strcharlen(matchstr(line, '^\s*')) + 1
+      if get(indices, -1, -1) != lineStart | call add(indices, lineStart) | endif
     endif
     for index in indices
       execute "normal \<Plug>(craftyjump-word-" . a:motion . ')'

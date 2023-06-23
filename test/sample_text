@@ -1,2 +1,17 @@
+
 V!m $tan|)$ f[]r V! !Mpr[]ve|).
 Vim は Vi・インプルーブドの略です。
+
+!
+!!!
+
+keyword ... keyword
+keyword ... [non-keyword]
+[non-keyword] ... keyword
+[non-keyword] ... [non-keyword]
+
+  keyword ... keyword  
+  keyword ... [non-keyword]  
+  [non-keyword] ... keyword  
+  [non-keyword] ... [non-keyword]  
+
