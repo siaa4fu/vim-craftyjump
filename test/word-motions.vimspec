@@ -89,7 +89,7 @@ Context simple moving
     " extra move
     let lnum -= 1
     execute "normal \<Plug>(craftyjump-word-w)"
-    call s:expect(v:null).to_be_at_position([lnum, strcharlen(getline(lnum))])
+    call s:expect(v:null).to_be_at_position([lnum, '$'])
   End
   It moves backward using 'b' from the last line
     let lnum = line('$')
@@ -101,7 +101,7 @@ Context simple moving
     " extra move
     let lnum += 1
     execute "normal \<Plug>(craftyjump-word-b)"
-    call s:expect(v:null).to_be_at_position([lnum, 1])
+    call s:expect(v:null).to_be_at_position([lnum, '0'])
   End
   It moves forward using 'e' from the first line
     let lnum = 1
@@ -113,7 +113,7 @@ Context simple moving
     " extra move
     let lnum -= 1
     execute "normal \<Plug>(craftyjump-word-e)"
-    call s:expect(v:null).to_be_at_position([lnum, strcharlen(getline(lnum))])
+    call s:expect(v:null).to_be_at_position([lnum, '$'])
   End
   It moves backward using 'ge' from the last line
     let lnum = line('$')
@@ -125,7 +125,7 @@ Context simple moving
     " extra move
     let lnum += 1
     execute "normal \<Plug>(craftyjump-word-ge)"
-    call s:expect(v:null).to_be_at_position([lnum, 1])
+    call s:expect(v:null).to_be_at_position([lnum, '0'])
   End
 End
 

@@ -5,7 +5,7 @@ themis#option('runtimepath', fnamemodify(expand('<sfile>'), ':h:h'))
 
 # @param {list} expect - [lnum, charcol] of expected position
 #   the column number is a 1-based character index, not a byte index
-#   alternatively, you can specify the column using following strings
+#   alternatively, the column number can be specified using following strings
 #     '0'  - the first character of the line
 #     '^'  - the first non-blank character of the line
 #     '$'  - the last character of the line
@@ -13,14 +13,14 @@ themis#option('runtimepath', fnamemodify(expand('<sfile>'), ':h:h'))
 themis#helper#expect#define_matcher('to_be_at_position',
   (_, expect) => {
     const pos = getcursorcharpos()
-    var col: number
+    var charcol: number
     if type(expect[1]) == v:t_string
       # temporarily move the cursor to the expected position
       execute 'normal!' expect[0] .. 'gg' .. expect[1]
-      col = charcol('.')
-      setcursorcharpos(pos[1 :])
+      charcol = charcol('.')
+      setcharpos('.', pos)
     endif
-    return pos[1 : 2] ==# [expect[0], col ?? expect[1]]
+    return pos[1 : 2] ==# [expect[0], charcol ?? expect[1]]
   },
   (not, name, _, expect) =>
     'Expected the cursor position ' .. (not ? 'not ' : '') .. 'to be at ' .. string(expect) .. '.'
