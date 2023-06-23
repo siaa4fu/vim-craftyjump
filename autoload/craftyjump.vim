@@ -48,19 +48,19 @@ def MoveToKwdChar(motion: string): bool # {{{
   var oldline = getline(oldpos[1])
   while 1
     execute 'normal!' motion
-    const newpos = getcursorcharpos()
-    if oldpos == newpos
+    const pos = getcursorcharpos()
+    if oldpos == pos
       # abort if the cursor could not move
       isMoved = v:false
       break
     endif
-    const line = getline(newpos[1])
-    if oldpos[1] != newpos[1]
+    const line = getline(pos[1])
+    if oldpos[1] != pos[1]
       if isForward ? IsAtLineEnd(oldpos, oldline) : IsAtLineStart(oldpos, oldline)
         # when the cursor moves from the edge of the line to another line
         if line =~# '^\s*$'
           # skip blank lines
-          oldpos = newpos
+          oldpos = pos
           oldline = line
           continue
         endif
@@ -73,14 +73,14 @@ def MoveToKwdChar(motion: string): bool # {{{
       endif
     endif
     # when the cursor moved within the same line or from the edge of the line
-    if IsKwdChar(newpos, line)
-        || (isForward ? IsAtLineEnd(newpos, line) : IsAtLineStart(newpos, line))
+    if IsKwdChar(pos, line)
+        || (isForward ? IsAtLineEnd(pos, line) : IsAtLineStart(pos, line))
       # stop moving if the character under the cursor was a keyword character
       # or if the cursor moved to the edge of the line
       isMoved = v:true
       break
     endif
-    oldpos = newpos
+    oldpos = pos
     oldline = line
   endwhile
   return isMoved
