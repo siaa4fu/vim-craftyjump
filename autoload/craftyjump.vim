@@ -89,8 +89,32 @@ enddef # }}}
 export def Word(motion: string)
   # @param {'w' | 'b' | 'e' | 'ge'} motion
   const cnt = v:count1
-  for i in range(cnt)
-    const isMoved = MoveToKwdChar(motion)
-    if ! isMoved | break | endif
-  endfor
+  const mode = mode(1)
+  if mode =~# '^no'
+    # set the operator to be linewise, characterwise or blockwise (`forced-motion`)
+    execute 'normal!' (mode[2] ?? 'v')
+    # temporarily override &selection, then restore it after the operator is done
+    const sel = &selection
+    try
+      if motion ==# 'w' || motion ==# 'b'
+        &selection = 'exclusive'
+      elseif motion ==# 'e' || motion ==# 'ge'
+        &selection = 'inclusive'
+      endif
+      for i in range(cnt)
+        const isMoved = MoveToKwdChar(motion)
+        if ! isMoved | break | endif
+      endfor
+    finally
+      timer_start(100, (_) => {
+        &selection = sel
+      })
+    endtry
+  else
+    # move the cursor in any mode except operator-pending mode
+    for i in range(cnt)
+      const isMoved = MoveToKwdChar(motion)
+      if ! isMoved | break | endif
+    endfor
+  endif
 enddef
