@@ -4,11 +4,11 @@ Describe word-motions
 
 let s:expect = function(themis#helper('expect'))
 
-function! s:init_test_buffer()
+function! s:init_test_buffer(lines)
+  " @param {list<string>} lines - set lines in the test buffer
   new | only!
-  let lines = readfile('test/sample_text')
-  for lnum in range(1, len(lines))
-    call setline(lnum, lines[lnum - 1])
+  for lnum in range(1, len(a:lines))
+    call setline(lnum, a:lines[lnum - 1])
   endfor
 endfunction
 
@@ -83,7 +83,7 @@ endfunction
 
 Context simple moving
   Before
-    call s:init_test_buffer()
+    call s:init_test_buffer(readfile('test/sample_text'))
   End
   It moves forward using 'w' from the first line
     let lnum = 1
