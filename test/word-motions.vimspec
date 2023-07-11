@@ -135,4 +135,82 @@ Context using as simple motions
   End
 End
 
+Context using as operators
+  Before
+    call s:init_test_buffer(['aaa [bbb] ccc', 'ddd [eee] fff'])
+  End
+  It deletes a word using 'w'
+    normal! gg0
+    " delete a word (exclusive)
+    execute "normal d\<Plug>(craftyjump-word-w)"
+    call s:expect(getline('.')).to_equal('bbb] ccc')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('ccc')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('ddd [eee] fff')
+    " delete 2 words
+    execute "normal d2\<Plug>(craftyjump-word-w)"
+    call s:expect(getline('.')).to_equal('fff')
+  End
+  It deletes a word using 'b'
+    normal! G$
+    " delete a word (exclusive)
+    execute "normal d\<Plug>(craftyjump-word-b)"
+    call s:expect(getline('.')).to_equal('ddd [eee] f')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('ddd [f')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('f')
+    " repeat (also remove an end-of-line unlike default 'b')
+    normal! .
+    call s:expect(getline('.')).to_equal('aaa [bbb] f')
+    " delete 2 words
+    execute "normal d2\<Plug>(craftyjump-word-b)"
+    call s:expect(getline('.')).to_equal('f')
+  End
+  It deletes a word using 'e'
+    normal! gg0
+    " delete a word (inclusive)
+    execute "normal d\<Plug>(craftyjump-word-e)"
+    call s:expect(getline('.')).to_equal(' [bbb] ccc')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('] ccc')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal(' [eee] fff')
+    " delete 2 words
+    execute "normal d2\<Plug>(craftyjump-word-e)"
+    call s:expect(getline('.')).to_equal('')
+  End
+  It deletes a word using 'ge'
+    normal! G$
+    " delete a word (inclusive)
+    execute "normal d\<Plug>(craftyjump-word-ge)"
+    call s:expect(getline('.')).to_equal('ddd [ee')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('dd')
+    " repeat (stop at the first character of the line unlike default 'ge')
+    normal! .
+    call s:expect(getline('.')).to_equal('')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('aaa [bbb] cc')
+    " delete 2 words
+    execute "normal d2\<Plug>(craftyjump-word-ge)"
+    call s:expect(getline('.')).to_equal('aa')
+  End
+End
+
 End
