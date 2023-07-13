@@ -137,7 +137,7 @@ End
 
 Context using as operators
   Before
-    call s:init_test_buffer(['aaa [bbb] ccc', 'ddd [eee] fff'])
+    call s:init_test_buffer(['aaa [bbb] ccc', 'あああ [いいい] ううう'])
   End
   It deletes a word using 'w'
     normal! gg0
@@ -152,28 +152,28 @@ Context using as operators
     call s:expect(getline('.')).to_equal('')
     " repeat
     normal! .
-    call s:expect(getline('.')).to_equal('ddd [eee] fff')
+    call s:expect(getline('.')).to_equal('あああ [いいい] ううう')
     " delete 2 words
     execute "normal d2\<Plug>(craftyjump-word-w)"
-    call s:expect(getline('.')).to_equal('fff')
+    call s:expect(getline('.')).to_equal('ううう')
   End
   It deletes a word using 'b'
     normal! G$
     " delete a word (exclusive)
     execute "normal d\<Plug>(craftyjump-word-b)"
-    call s:expect(getline('.')).to_equal('ddd [eee] f')
+    call s:expect(getline('.')).to_equal('あああ [いいい] う')
     " repeat
     normal! .
-    call s:expect(getline('.')).to_equal('ddd [f')
+    call s:expect(getline('.')).to_equal('あああ [う')
     " repeat
     normal! .
-    call s:expect(getline('.')).to_equal('f')
+    call s:expect(getline('.')).to_equal('う')
     " repeat (also remove an end-of-line unlike default 'b')
     normal! .
-    call s:expect(getline('.')).to_equal('aaa [bbb] f')
+    call s:expect(getline('.')).to_equal('aaa [bbb] う')
     " delete 2 words
     execute "normal d2\<Plug>(craftyjump-word-b)"
-    call s:expect(getline('.')).to_equal('f')
+    call s:expect(getline('.')).to_equal('う')
   End
   It deletes a word using 'e'
     normal! gg0
@@ -188,7 +188,7 @@ Context using as operators
     call s:expect(getline('.')).to_equal('')
     " repeat
     normal! .
-    call s:expect(getline('.')).to_equal(' [eee] fff')
+    call s:expect(getline('.')).to_equal(' [いいい] ううう')
     " delete 2 words
     execute "normal d2\<Plug>(craftyjump-word-e)"
     call s:expect(getline('.')).to_equal('')
@@ -197,10 +197,10 @@ Context using as operators
     normal! G$
     " delete a word (inclusive)
     execute "normal d\<Plug>(craftyjump-word-ge)"
-    call s:expect(getline('.')).to_equal('ddd [ee')
+    call s:expect(getline('.')).to_equal('あああ [いい')
     " repeat
     normal! .
-    call s:expect(getline('.')).to_equal('dd')
+    call s:expect(getline('.')).to_equal('ああ')
     " repeat (stop at the first character of the line unlike default 'ge')
     normal! .
     call s:expect(getline('.')).to_equal('')
