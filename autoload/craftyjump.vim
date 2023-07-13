@@ -101,10 +101,22 @@ export def Word(motion: string)
       elseif motion ==# 'e' || motion ==# 'ge'
         &selection = 'inclusive'
       endif
+      var isMoved: bool
+      const oldpos = getcursorcharpos()
       for i in range(cnt)
-        const isMoved = MoveToKwdChar(motion)
+        isMoved = MoveToKwdChar(motion)
         if ! isMoved | break | endif
       endfor
+      # treat 'cw' like 'ce' if the cursor has moved from a non-blank character (`WORD`)
+      if isMoved && v:operator ==# 'c' && motion ==# 'w' && getline(oldpos[1])[oldpos[2] - 1] =~# '\S'
+        const pos = getcursorcharpos()
+        if pos[2] > 1
+          # if the character before the cursor ends with a whitespace, move backward to a non-blank character
+          const movedThroughChars = getline(pos[1])[(oldpos[1] == pos[1] ? oldpos[2] - 1 : 0) : pos[2] - 2]
+          const leftoffset = strcharlen(matchstr(movedThroughChars, '\s\+[^[:keyword:]]*$'))
+          if leftoffset > 0 | execute 'normal!' leftoffset .. 'h' | endif
+        endif
+      endif
     finally
       timer_start(100, (_) => {
         &selection = sel
