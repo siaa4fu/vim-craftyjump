@@ -211,6 +211,85 @@ Context using as operators
     execute "normal d2\<Plug>(craftyjump-word-ge)"
     call s:expect(getline('.')).to_equal('aa')
   End
+  " cursor position shifts when exiting insert mode
+  It changes a word using 'w' (special case `WORD`)
+    normal! gg0
+    " change a word
+    execute "normal c\<Plug>(craftyjump-word-w)\<Esc>"
+    call s:expect(getline('.')).to_equal(' [bbb] ccc')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('bbb] ccc')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal(' ccc')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('ccc')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('あああ [いいい] ううう')
+    " change 2 words
+    execute "normal c2\<Plug>(craftyjump-word-w)\<Esc>"
+    call s:expect(getline('.')).to_equal(' ううう')
+  End
+  It changes a word using 'b'
+    normal! G$
+    " change a word
+    execute "normal c\<Plug>(craftyjump-word-b)\<Esc>"
+    call s:expect(getline('.')).to_equal('あああ [いいい] う')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('あああ [ う')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('[ う')
+    " repeat (also remove an end-of-line unlike default 'b')
+    normal! .
+    call s:expect(getline('.')).to_equal('aaa [bbb] [ う')
+    " change 2 words
+    execute "normal c2\<Plug>(craftyjump-word-b)\<Esc>"
+    call s:expect(getline('.')).to_equal(' [ う')
+  End
+  It changes a word using 'e'
+    normal! gg0
+    " change a word
+    execute "normal c\<Plug>(craftyjump-word-e)\<Esc>"
+    call s:expect(getline('.')).to_equal(' [bbb] ccc')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('] ccc')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal(' [いいい] ううう')
+    " change 2 words
+    execute "normal c2\<Plug>(craftyjump-word-e)\<Esc>"
+    call s:expect(getline('.')).to_equal('')
+  End
+  It changes a word using 'ge'
+    normal! G$
+    " change a word
+    execute "normal c\<Plug>(craftyjump-word-ge)\<Esc>"
+    call s:expect(getline('.')).to_equal('あああ [いい')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('ああ')
+    " repeat (stop at the first character of the line unlike default 'ge')
+    normal! .
+    call s:expect(getline('.')).to_equal('')
+    " repeat
+    normal! .
+    call s:expect(getline('.')).to_equal('aaa [bbb] cc')
+    " change 2 words
+    execute "normal c2\<Plug>(craftyjump-word-ge)\<Esc>"
+    call s:expect(getline('.')).to_equal('aa')
+  End
 End
 
 End
