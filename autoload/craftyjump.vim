@@ -19,11 +19,12 @@ def IsForwardMotion(motion: string): bool # {{{
   endif
   return isForward
 enddef # }}}
-def IsKwdChar(pos: list<number>, line = getline(pos[1])): bool # {{{
+def IsCharUnderCursor(regexp: string, pos: list<number>, line = getline(pos[1])): bool # {{{
+  # @param {string} regexp - regexp to check if the character under the cursor matches
   # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
   # @param {string=} line - the line of the cursor position
   # @return {bool} - whether the character under the cursor is a keyword character
-  return line[pos[2] - 1] =~# '\k'
+  return line[pos[2] - 1] =~# regexp
 enddef # }}}
 def IsAtLineEnd(pos: list<number>, line = getline(pos[1])): bool # {{{
   # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
@@ -73,7 +74,7 @@ def MoveToKwdChar(motion: string): bool # {{{
       endif
     endif
     # when the cursor moved within the same line or from the edge of the line
-    if IsKwdChar(pos, line)
+    if IsCharUnderCursor('\k', pos, line)
         || (isForward ? IsAtLineEnd(pos, line) : IsAtLineStart(pos, line))
       # stop moving if the character under the cursor was a keyword character
       # or if the cursor moved to the edge of the line
@@ -108,7 +109,7 @@ export def Word(motion: string)
         if ! isMoved | break | endif
       endfor
       # treat 'cw' like 'ce' if the cursor has moved from a non-blank character (`WORD`)
-      if isMoved && v:operator ==# 'c' && motion ==# 'w' && getline(oldpos[1])[oldpos[2] - 1] =~# '\S'
+      if isMoved && v:operator ==# 'c' && motion ==# 'w' && IsCharUnderCursor('\S', oldpos)
         const pos = getcursorcharpos()
         if pos[2] > 1
           # if the character before the cursor ends with a whitespace, move backward to a non-blank character
