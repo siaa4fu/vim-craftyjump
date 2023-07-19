@@ -31,7 +31,8 @@ def IsAtLineEnd(pos: list<number>, line = getline(pos[1])): bool # {{{
   # @param {string=} line - the line of the cursor position
   # @return {bool} - whether the cursor is at the end of the line
   # return true if the characters to the right of the cursor are whitespaces only
-  return line[pos[2] :] =~# '^\s*$'
+  const isExclusiveSelection = mode() =~# "[vV\<C-v>]" ? &selection ==# 'exclusive' : v:false
+  return line[pos[2] - (isExclusiveSelection ? 1 : 0) :] =~# '^\s*$'
 enddef # }}}
 def IsAtLineStart(pos: list<number>, line = getline(pos[1])): bool # {{{
   # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
@@ -44,6 +45,7 @@ def MoveToKwdChar(motion: string): bool # {{{
   # @param {'w' | 'b' | 'e' | 'ge'} motion
   # @return {bool} - whether the cursor has moved to a keyword character
   const isForward = IsForwardMotion(motion)
+  const IsAtLineEdge = isForward ? IsAtLineEnd : IsAtLineStart
   var isMoved: bool
   var oldpos = getcursorcharpos() # [0, lnum, charcol, off, curswant]
   var oldline = getline(oldpos[1])
@@ -57,7 +59,7 @@ def MoveToKwdChar(motion: string): bool # {{{
     endif
     const line = getline(pos[1])
     if oldpos[1] != pos[1]
-      if isForward ? IsAtLineEnd(oldpos, oldline) : IsAtLineStart(oldpos, oldline)
+      if IsAtLineEdge(oldpos, oldline)
         # when the cursor moves from the edge of the line to another line
         if line =~# '^\s*$'
           # skip blank lines
@@ -74,8 +76,7 @@ def MoveToKwdChar(motion: string): bool # {{{
       endif
     endif
     # when the cursor moved within the same line or from the edge of the line
-    if IsCharUnderCursor('\k', pos, line)
-        || (isForward ? IsAtLineEnd(pos, line) : IsAtLineStart(pos, line))
+    if IsCharUnderCursor('\k', pos, line) || IsAtLineEdge(pos, line)
       # stop moving if the character under the cursor was a keyword character
       # or if the cursor moved to the edge of the line
       isMoved = v:true
