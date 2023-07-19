@@ -47,7 +47,7 @@ def MoveToKwdChar(motion: string): bool # {{{
   var isMoved: bool
   var oldpos = getcursorcharpos() # [0, lnum, charcol, off, curswant]
   var oldline = getline(oldpos[1])
-  while 1
+  while v:true
     execute 'normal!' motion
     const pos = getcursorcharpos()
     if oldpos == pos
@@ -90,7 +90,7 @@ enddef # }}}
 export def Word(motion: string)
   # @param {'w' | 'b' | 'e' | 'ge'} motion
   const cnt = v:count1
-  const mode = mode(1)
+  const mode = mode(v:true)
   if mode =~# '^no'
     # set the operator to be linewise, characterwise or blockwise (`forced-motion`)
     execute 'normal!' (mode[2] ?? 'v')
