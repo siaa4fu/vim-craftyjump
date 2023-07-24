@@ -60,61 +60,66 @@ def MoveToKwdChar(motion: string, isExclusiveSelection: bool): bool # {{{
   # @param {bool} isExclusiveSelection - in the visual-mode, whether the selection is exclusive
   #                                      if true, move the cursor to the correct position
   # @return {bool} - whether the cursor has moved to a keyword character
-  const sel = &selection
-  &selection = 'inclusive'
   const isForward = IsForwardMotion(motion)
   const IsAtLineEdge = isForward ? IsAtLineEnd : IsAtLineStart
   var isMoved: bool
   var usedInclusiveMotion: bool
-  var oldpos = getcursorcharpos() # [0, lnum, charcol, off, curswant]
-  var oldline = getline(oldpos[1])
-  while v:true
-    usedInclusiveMotion = DoSingleMotion(motion)
-    const pos = getcursorcharpos()
-    if oldpos == pos
-      # abort if the cursor could not move
-      isMoved = v:false
-      break
-    endif
-    const line = getline(pos[1])
-    if oldpos[1] != pos[1]
-      if IsAtLineEdge(oldpos, oldline)
-        # when the cursor moves from the edge of the line to another line
-        if line =~# '^\s*$'
-          # skip blank lines
-          oldpos = pos
-          oldline = line
-          continue
-        endif
-      else
-        # move the cursor to the edge of the line
-        setcharpos('.', oldpos)
-        usedInclusiveMotion = DoSingleMotion(isForward ? 'g_' : '^')
-        isMoved = v:true
+  const sel = &selection
+  try
+    # temporarily set &selection and always move inclusively
+    # (because &selection may move motions to different positions, e.g. 'e')
+    &selection = 'inclusive'
+    var oldpos = getcursorcharpos() # [0, lnum, charcol, off, curswant]
+    var oldline = getline(oldpos[1])
+    while v:true
+      usedInclusiveMotion = DoSingleMotion(motion)
+      const pos = getcursorcharpos()
+      if oldpos == pos
+        # abort if the cursor could not move
+        isMoved = v:false
         break
       endif
+      const line = getline(pos[1])
+      if oldpos[1] != pos[1]
+        if IsAtLineEdge(oldpos, oldline)
+          # when the cursor moves from the edge of the line to another line
+          if line =~# '^\s*$'
+            # skip blank lines
+            oldpos = pos
+            oldline = line
+            continue
+          endif
+        else
+          # move the cursor to the edge of the line
+          setcharpos('.', oldpos)
+          usedInclusiveMotion = DoSingleMotion(isForward ? 'g_' : '^')
+          isMoved = v:true
+          break
+        endif
+      endif
+      # when the cursor moved within the same line or from the edge of the line
+      if IsCharUnderCursor('\k', pos, line)
+        # stop moving if the character under the cursor was a keyword character
+        isMoved = v:true
+        break
+      elseif IsAtLineEdge(pos, line)
+        # stop moving if the cursor moved to a non-keyword character at the edge of the line
+        # (force the motion to be inclusive to include the last character of the motion)
+        isMoved = v:true
+        usedInclusiveMotion = v:true
+        break
+      endif
+      oldpos = pos
+      oldline = line
+    endwhile
+  finally
+    &selection = sel
+    if isForward && isExclusiveSelection && usedInclusiveMotion
+      # in the visual-mode, move the cursor to the correct position
+      # if the last character of the selection is excluded in an operation and the inclusive motion was last-used
+      normal! l
     endif
-    # when the cursor moved within the same line or from the edge of the line
-    if IsCharUnderCursor('\k', pos, line)
-      # stop moving if the character under the cursor was a keyword character
-      isMoved = v:true
-      break
-    elseif IsAtLineEdge(pos, line)
-      # stop moving if the cursor moved to a non-keyword character at the edge of the line
-      # (force the motion to be inclusive to include the last character of the motion)
-      isMoved = v:true
-      usedInclusiveMotion = v:true
-      break
-    endif
-    oldpos = pos
-    oldline = line
-  endwhile
-  &selection = sel
-  if isForward && isExclusiveSelection && usedInclusiveMotion
-    # in the visual-mode, move the cursor to the correct position
-    # if the last character of the selection is excluded in an operation and the inclusive motion was last-used
-    normal! l
-  endif
+  endtry
   return isMoved
 enddef # }}}
 
