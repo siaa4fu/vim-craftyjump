@@ -57,7 +57,7 @@ def IsAtLineStart(pos: list<number>, line = getline(pos[1])): bool # {{{
 enddef # }}}
 def MoveToKwdChar(motion: string, inExclusiveSel: bool): bool # {{{
   # @param {'w' | 'b' | 'e' | 'ge'} motion
-  # @param {bool} inExclusiveSel - in the visual-mode, whether the selection is exclusive
+  # @param {bool} inExclusiveSel - in visual mode, whether the selection is exclusive
   #                                if true, move the cursor to the correct position
   # @return {bool} - whether the cursor has moved to a keyword character
   const isForward = IsForwardMotion(motion)
@@ -114,7 +114,7 @@ def MoveToKwdChar(motion: string, inExclusiveSel: bool): bool # {{{
   finally
     &selection = sel
     if inExclusiveSel && motionType == 1
-      # in the visual-mode, move the cursor to the correct position
+      # in visual mode, move the cursor to the correct position
       # if the last character of the selection is excluded in an operation and the inclusive motion was last-used
       normal! l
     endif
