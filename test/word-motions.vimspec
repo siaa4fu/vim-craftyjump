@@ -12,7 +12,7 @@ function! s:init_test_buffer(lines)
   endfor
 endfunction
 
-Context using as simple motions
+Context motions simply move the cursor
   function! s:getKwdIndices(line, motion)
     " @param {string} line
     " @param {'w' | 'b' | 'e' | 'ge'} motion
@@ -50,7 +50,6 @@ Context using as simple motions
     endif
     return indices
   endfunction
-
   function! s:moveInLine(lnum, motion, isInitialLine)
     " @param {number} lnum - move in the line with the specified line number
     " @param {'w' | 'b' | 'e' | 'ge'} motion
@@ -81,7 +80,6 @@ Context using as simple motions
     endif
     return a:lnum + (isForward ? 1 : -1)
   endfunction
-
   Before
     call s:init_test_buffer(readfile('test/sample_text'))
   End
@@ -135,160 +133,257 @@ Context using as simple motions
   End
 End
 
-Context using as operators
+Context motions are used after operators
+  function! s:dotrepeat(expect)
+    normal! .
+    call s:expect(getline('.')).to_equal(a:expect)
+  endfunction
   Before
-    call s:init_test_buffer(['aaa [bbb] ccc', 'あああ [いいい] ううう'])
+    " use lines 8 to 16
+    call s:init_test_buffer(readfile('test/sample_text')[7 : 15])
   End
-  It deletes a word using 'w'
-    normal! gg0
-    " delete a word (exclusive)
-    execute "normal d\<Plug>(craftyjump-word-w)"
-    call s:expect(getline('.')).to_equal('bbb] ccc')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('ccc')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('あああ [いいい] ううう')
-    " delete 2 words
-    execute "normal d2\<Plug>(craftyjump-word-w)"
-    call s:expect(getline('.')).to_equal('ううう')
+  Context d{motion} - delete words
+    It 'dw' (exclusive)
+      normal! gg0
+      " delete a word and repeat
+      execute "normal d\<Plug>(craftyjump-word-w)"
+      call s:expect(getline('.')).to_equal('keyword')
+      call s:dotrepeat('')
+      call s:dotrepeat('keyword ... [non-keyword]')
+      call s:dotrepeat('non-keyword]')
+      call s:dotrepeat('keyword]')
+      call s:dotrepeat('')
+      call s:dotrepeat('non-keyword] ... keyword')
+      call s:dotrepeat('keyword] ... keyword')
+      call s:dotrepeat('keyword')
+      call s:dotrepeat('')
+      call s:dotrepeat('non-keyword] ... [non-keyword]')
+      call s:dotrepeat('keyword] ... [non-keyword]')
+      call s:dotrepeat('non-keyword]')
+      call s:dotrepeat('keyword]')
+      call s:dotrepeat('')
+      " next paragraph
+      call s:dotrepeat('keyword ... keyword  ')
+      " delete 2 words and repeat
+      execute "normal d2\<Plug>(craftyjump-word-w)"
+      call s:expect(getline('.')).to_equal('  ')
+      call s:dotrepeat('non-keyword]  ')
+      call s:dotrepeat('  ')
+      call s:dotrepeat('keyword] ... keyword  ')
+      call s:dotrepeat('  ')
+      call s:dotrepeat('keyword] ... [non-keyword]  ')
+      call s:dotrepeat('keyword]  ')
+    End
+    It 'db' (exclusive)
+      normal! G$
+      " delete a word and repeat
+      execute "normal d\<Plug>(craftyjump-word-b)"
+      call s:expect(getline('.')).to_equal('  [non-keyword] ... [non- ')
+      call s:dotrepeat('  [non-keyword] ... [ ')
+      call s:dotrepeat('  [non- ')
+      call s:dotrepeat('  [ ')
+      call s:dotrepeat('   ')
+      call s:dotrepeat('  [non-keyword] ...  ')
+      call s:dotrepeat('  [non- ')
+      call s:dotrepeat('  [ ')
+      call s:dotrepeat('   ')
+      call s:dotrepeat('  keyword ... [non- ')
+      call s:dotrepeat('  keyword ... [ ')
+      call s:dotrepeat('   ')
+      call s:dotrepeat('  keyword ...  ')
+      call s:dotrepeat('   ')
+      " previous paragraph
+      call s:dotrepeat('[non-keyword] ... [non- ')
+      " delete 2 words and repeat
+      execute "normal d2\<Plug>(craftyjump-word-b)"
+      call s:expect(getline('.')).to_equal('[non- ')
+      call s:dotrepeat(' ')
+      call s:dotrepeat('[non- ')
+      call s:dotrepeat(' ')
+      call s:dotrepeat('keyword ... [ ')
+      call s:dotrepeat('keyword ...  ')
+    End
+    It 'de' (inclusive)
+      normal! gg0
+      " delete a word and repeat
+      execute "normal d\<Plug>(craftyjump-word-e)"
+      call s:expect(getline('.')).to_equal(' ... keyword')
+      call s:dotrepeat('')
+      call s:dotrepeat(' ... [non-keyword]')
+      call s:dotrepeat('-keyword]')
+      call s:dotrepeat(']')
+      call s:dotrepeat('-keyword] ... keyword')
+      call s:dotrepeat('] ... keyword')
+      call s:dotrepeat('')
+      call s:dotrepeat('-keyword] ... [non-keyword]')
+      call s:dotrepeat('] ... [non-keyword]')
+      call s:dotrepeat('-keyword]')
+      call s:dotrepeat(']')
+      " next paragraph
+      call s:dotrepeat(' ... keyword  ')
+      " delete 2 words and repeat
+      execute "normal d2\<Plug>(craftyjump-word-e)"
+      call s:expect(getline('.')).to_equal(' ... [non-keyword]  ')
+      call s:dotrepeat(']  ')
+      call s:dotrepeat('] ... keyword  ')
+      call s:dotrepeat('-keyword] ... [non-keyword]  ')
+      call s:dotrepeat('-keyword]  ')
+    End
+    It 'dge' (inclusive)
+      normal! G$
+      " delete a word and repeat
+      execute "normal d\<Plug>(craftyjump-word-ge)"
+      call s:expect(getline('.')).to_equal('  [non-keyword] ... [non-keywor')
+      call s:dotrepeat('  [non-keyword] ... [no')
+      call s:dotrepeat('  [non-keywor')
+      call s:dotrepeat('  [no')
+      call s:dotrepeat('  ')
+      call s:dotrepeat('  [non-keyword] ... keywor')
+      call s:dotrepeat('  [non-keywor')
+      call s:dotrepeat('  [no')
+      call s:dotrepeat('  ')
+      call s:dotrepeat('  keyword ... [non-keywor')
+      call s:dotrepeat('  keyword ... [no')
+      call s:dotrepeat('  keywor')
+      call s:dotrepeat('  ')
+      call s:dotrepeat('  keyword ... keywor')
+      call s:dotrepeat('  keywor')
+      call s:dotrepeat('  ')
+      " previous paragraph
+      call s:dotrepeat('[non-keyword] ... [non-keywor')
+      " delete 2 words and repeat
+      execute "normal d2\<Plug>(craftyjump-word-ge)"
+      call s:expect(getline('.')).to_equal('[non-keywor')
+      call s:dotrepeat('')
+      call s:dotrepeat('[non-keywor')
+      call s:dotrepeat('')
+      call s:dotrepeat('keyword ... [no')
+      call s:dotrepeat('')
+      call s:dotrepeat('keywor')
+    End
   End
-  It deletes a word using 'b'
-    normal! G$
-    " delete a word (exclusive)
-    execute "normal d\<Plug>(craftyjump-word-b)"
-    call s:expect(getline('.')).to_equal('あああ [いいい] う')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('あああ [う')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('う')
-    " repeat (also remove an end-of-line unlike default 'b')
-    normal! .
-    call s:expect(getline('.')).to_equal('aaa [bbb] う')
-    " delete 2 words
-    execute "normal d2\<Plug>(craftyjump-word-b)"
-    call s:expect(getline('.')).to_equal('う')
-  End
-  It deletes a word using 'e'
-    normal! gg0
-    " delete a word (inclusive)
-    execute "normal d\<Plug>(craftyjump-word-e)"
-    call s:expect(getline('.')).to_equal(' [bbb] ccc')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('] ccc')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal(' [いいい] ううう')
-    " delete 2 words
-    execute "normal d2\<Plug>(craftyjump-word-e)"
-    call s:expect(getline('.')).to_equal('')
-  End
-  It deletes a word using 'ge'
-    normal! G$
-    " delete a word (inclusive)
-    execute "normal d\<Plug>(craftyjump-word-ge)"
-    call s:expect(getline('.')).to_equal('あああ [いい')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('ああ')
-    " repeat (stop at the first character of the line unlike default 'ge')
-    normal! .
-    call s:expect(getline('.')).to_equal('')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('aaa [bbb] cc')
-    " delete 2 words
-    execute "normal d2\<Plug>(craftyjump-word-ge)"
-    call s:expect(getline('.')).to_equal('aa')
-  End
-  " cursor position shifts when exiting insert mode
-  It changes a word using 'w' (special case `WORD`)
-    normal! gg0
-    " change a word
-    execute "normal c\<Plug>(craftyjump-word-w)\<Esc>"
-    call s:expect(getline('.')).to_equal(' [bbb] ccc')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('bbb] ccc')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal(' ccc')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('ccc')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('あああ [いいい] ううう')
-    " change 2 words
-    execute "normal c2\<Plug>(craftyjump-word-w)\<Esc>"
-    call s:expect(getline('.')).to_equal(' ううう')
-  End
-  It changes a word using 'b'
-    normal! G$
-    " change a word
-    execute "normal c\<Plug>(craftyjump-word-b)\<Esc>"
-    call s:expect(getline('.')).to_equal('あああ [いいい] う')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('あああ [ う')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('[ う')
-    " repeat (also remove an end-of-line unlike default 'b')
-    normal! .
-    call s:expect(getline('.')).to_equal('aaa [bbb] [ う')
-    " change 2 words
-    execute "normal c2\<Plug>(craftyjump-word-b)\<Esc>"
-    call s:expect(getline('.')).to_equal(' [ う')
-  End
-  It changes a word using 'e'
-    normal! gg0
-    " change a word
-    execute "normal c\<Plug>(craftyjump-word-e)\<Esc>"
-    call s:expect(getline('.')).to_equal(' [bbb] ccc')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('] ccc')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal(' [いいい] ううう')
-    " change 2 words
-    execute "normal c2\<Plug>(craftyjump-word-e)\<Esc>"
-    call s:expect(getline('.')).to_equal('')
-  End
-  It changes a word using 'ge'
-    normal! G$
-    " change a word
-    execute "normal c\<Plug>(craftyjump-word-ge)\<Esc>"
-    call s:expect(getline('.')).to_equal('あああ [いい')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('ああ')
-    " repeat (stop at the first character of the line unlike default 'ge')
-    normal! .
-    call s:expect(getline('.')).to_equal('')
-    " repeat
-    normal! .
-    call s:expect(getline('.')).to_equal('aaa [bbb] cc')
-    " change 2 words
-    execute "normal c2\<Plug>(craftyjump-word-ge)\<Esc>"
-    call s:expect(getline('.')).to_equal('aa')
+  Context c{motion} - change words
+    " after exiting insert mode, the cursor position shifts one to the left
+    It 'cw' (special case `WORD`)
+      normal! gg0
+      " change a word and repeat
+      execute "normal c\<Plug>(craftyjump-word-w)\<Esc>"
+      call s:expect(getline('.')).to_equal(' keyword')
+      call s:dotrepeat('keyword')
+      call s:dotrepeat('')
+      call s:dotrepeat('keyword ... [non-keyword]')
+      call s:dotrepeat(' [non-keyword]')
+      call s:dotrepeat('non-keyword]')
+      call s:dotrepeat('keyword]')
+      call s:dotrepeat('')
+      call s:dotrepeat('non-keyword] ... keyword')
+      call s:dotrepeat('keyword] ... keyword')
+      call s:dotrepeat(' keyword')
+      call s:dotrepeat('keyword')
+      call s:dotrepeat('')
+      call s:dotrepeat('non-keyword] ... [non-keyword]')
+      call s:dotrepeat('keyword] ... [non-keyword]')
+      call s:dotrepeat(' [non-keyword]')
+      call s:dotrepeat('non-keyword]')
+      call s:dotrepeat('keyword]')
+      call s:dotrepeat('')
+      " next paragraph
+      call s:dotrepeat('keyword ... keyword  ')
+      " change 2 words and repeat
+      execute "normal c2\<Plug>(craftyjump-word-w)\<Esc>"
+      call s:expect(getline('.')).to_equal('  ')
+      call s:dotrepeat('non-keyword]  ')
+      call s:dotrepeat('  ')
+      call s:dotrepeat('keyword] ... keyword  ')
+      call s:dotrepeat('  ')
+      call s:dotrepeat('keyword] ... [non-keyword]  ')
+      call s:dotrepeat('keyword]  ')
+    End
+    It 'cb' (exclusive)
+      normal! G$
+      " change a word and repeat
+      execute "normal c\<Plug>(craftyjump-word-b)\<Esc>"
+      call s:expect(getline('.')).to_equal('  [non-keyword] ... [non- ')
+      call s:dotrepeat('  [non-keyword] ... [- ')
+      call s:dotrepeat('  [non-[- ')
+      call s:dotrepeat('  [-[- ')
+      call s:dotrepeat('  [non-keyword] ... [-[- ')
+      call s:dotrepeat('  [non- [-[- ')
+      call s:dotrepeat('  [- [-[- ')
+      call s:dotrepeat('  keyword ... [non-[- [-[- ')
+      call s:dotrepeat('  keyword ... [-[- [-[- ')
+      call s:dotrepeat('  [-[- [-[- ')
+      call s:dotrepeat('  keyword ...  [-[- [-[- ')
+      call s:dotrepeat('    [-[- [-[- ')
+      " previous paragraph
+      call s:dotrepeat('[non-keyword] ... [non-   [-[- [-[- ')
+      " change 2 words and repeat
+      execute "normal c2\<Plug>(craftyjump-word-b)\<Esc>"
+      call s:expect(getline('.')).to_equal('[non--   [-[- [-[- ')
+      call s:dotrepeat('--   [-[- [-[- ')
+      call s:dotrepeat('[non---   [-[- [-[- ')
+      call s:dotrepeat('---   [-[- [-[- ')
+      call s:dotrepeat('keyword ... [---   [-[- [-[- ')
+      call s:dotrepeat('keyword ... [---   [-[- [-[- ')
+    End
+    It 'ce' (inclusive)
+      normal! gg0
+      " change a word and repeat
+      execute "normal c\<Plug>(craftyjump-word-e)\<Esc>"
+      call s:expect(getline('.')).to_equal(' ... keyword')
+      call s:dotrepeat('')
+      call s:dotrepeat(' ... [non-keyword]')
+      call s:dotrepeat('-keyword]')
+      call s:dotrepeat(']')
+      call s:dotrepeat('-keyword] ... keyword')
+      call s:dotrepeat('] ... keyword')
+      call s:dotrepeat('')
+      call s:dotrepeat('-keyword] ... [non-keyword]')
+      call s:dotrepeat('] ... [non-keyword]')
+      call s:dotrepeat('-keyword]')
+      call s:dotrepeat(']')
+      " next paragraph
+      call s:dotrepeat(' ... keyword  ')
+      " change 2 words and repeat
+      execute "normal c2\<Plug>(craftyjump-word-e)\<Esc>"
+      call s:expect(getline('.')).to_equal(' ... [non-keyword]  ')
+      call s:dotrepeat(']  ')
+      call s:dotrepeat('] ... keyword  ')
+      call s:dotrepeat('-keyword] ... [non-keyword]  ')
+      call s:dotrepeat('-keyword]  ')
+    End
+    It 'cge' (inclusive)
+      normal! G$
+      " change a word and repeat
+      execute "normal c\<Plug>(craftyjump-word-ge)\<Esc>"
+      call s:expect(getline('.')).to_equal('  [non-keyword] ... [non-keywor')
+      call s:dotrepeat('  [non-keyword] ... [no')
+      call s:dotrepeat('  [non-keywor')
+      call s:dotrepeat('  [no')
+      call s:dotrepeat('  ')
+      call s:dotrepeat('  [non-keyword] ... keywor')
+      call s:dotrepeat('  [non-keywor')
+      call s:dotrepeat('  [no')
+      call s:dotrepeat('  ')
+      call s:dotrepeat('  keyword ... [non-keywor')
+      call s:dotrepeat('  keyword ... [no')
+      call s:dotrepeat('  keywor')
+      call s:dotrepeat('  ')
+      call s:dotrepeat('  keyword ... keywor')
+      call s:dotrepeat('  keywor')
+      call s:dotrepeat('  ')
+      " previous paragraph
+      call s:dotrepeat('[non-keyword] ... [non-keywor')
+      " change 2 words and repeat
+      execute "normal c2\<Plug>(craftyjump-word-ge)\<Esc>"
+      call s:expect(getline('.')).to_equal('[non-keywor')
+      call s:dotrepeat('')
+      call s:dotrepeat('[non-keywor')
+      call s:dotrepeat('')
+      call s:dotrepeat('keyword ... [no')
+      call s:dotrepeat('')
+      call s:dotrepeat('keywor')
+    End
   End
 End
 
