@@ -146,11 +146,12 @@ export def Word(motion: string)
       endfor
       # treat 'cw' like 'ce' if the cursor has moved from a non-blank character (`WORD`)
       if isMoved && v:operator ==# 'c' && motion ==# 'w' && IsCharUnderCursor('\S', oldpos)
+        # if the character before the cursor ends with a whitespace, move backward to a non-blank character
         const pos = getcursorcharpos()
         if pos[2] > 1
-          # if the character before the cursor ends with a whitespace, move backward to a non-blank character
-          const movedThroughChars = getline(pos[1])[(oldpos[1] == pos[1] ? oldpos[2] - 1 : 0) : pos[2] - 2]
-          const leftoffset = strcharlen(matchstr(movedThroughChars, '\s\+[^[:keyword:]]*$'))
+          # get characters that the cursor has passed through while moving, but only on the cursor line
+          const passedChars = getline(pos[1])[(oldpos[1] == pos[1] ? oldpos[2] - 1 : 0) : pos[2] - 2]
+          const leftoffset = strcharlen(matchstr(passedChars, '\s\+\%(\S\&[^[:keyword:]]\)*$'))
           if leftoffset > 0 | execute 'normal!' leftoffset .. 'h' | endif
         endif
       endif
