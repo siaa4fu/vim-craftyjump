@@ -55,6 +55,17 @@ def IsAtLineStart(pos: list<number>, line = getline(pos[1])): bool # {{{
   # return true if the characters to the left of the cursor are whitespaces only
   return (pos[2] == 1 ? '' : line[0 : pos[2] - 2]) =~# '^\s*$'
 enddef # }}}
+def IsSelEnd(): bool # {{{
+  # @return {bool} - whether the cursor is the end of the selection
+  # in visual characterwise, return true if the cursor is the end, not the start
+  # in visual linewise, always return true (always treat the cursor as the end)
+  # in visual blockwise, return true if the cursor column is greater than the column of the opposite side
+  const mode = mode()
+  const [pos, vpos] = [getcharpos('.'), getcharpos('v')] # [0, lnum, charcol, off]
+  return mode ==# 'v' && (vpos[1] == pos[1] && vpos[2] < pos[2] || vpos[1] < pos[1])
+    || mode ==# 'V'
+    || mode ==# "\<C-v>" && vpos[2] < pos[2]
+enddef # }}}
 def MoveToKwdChar(motion: string, inExclusiveSel: bool): bool # {{{
   # @param {'w' | 'b' | 'e' | 'ge'} motion
   # @param {bool} inExclusiveSel - in visual mode, whether the selection is exclusive
@@ -113,9 +124,9 @@ def MoveToKwdChar(motion: string, inExclusiveSel: bool): bool # {{{
     endwhile
   finally
     &selection = sel
-    if inExclusiveSel && motionType == 1
+    if motionType == 1 && inExclusiveSel && IsSelEnd()
       # in visual mode, move the cursor to the correct position
-      # if the last character of the selection is excluded in an operation and the inclusive motion was last-used
+      # if the inclusive motion was last-used and the last character of the selection is excluded in an operation
       normal! l
     endif
   endtry
