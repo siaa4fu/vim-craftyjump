@@ -55,21 +55,20 @@ def IsAtLineStart(pos: list<number>, line = getline(pos[1])): bool # {{{
   # return true if the characters to the left of the cursor are whitespaces only
   return (pos[2] == 1 ? '' : line[0 : pos[2] - 2]) =~# '^\s*$'
 enddef # }}}
-def IsSelEnd(): bool # {{{
-  # @return {bool} - whether the cursor is the end of the selection
+def IsExclusiveSelEnd(mode = mode()): bool # {{{
+  # @param {string=} mode - the current mode returned by mode()
+  # @return {bool} - whether the cursor is the end of the exclusive selection in visual mode
   # in visual characterwise, return true if the cursor is the end, not the start
   # in visual linewise, always return true (always treat the cursor as the end)
   # in visual blockwise, return true if the cursor column is greater than the column of the opposite side
-  const mode = mode()
+  if &selection !=# 'exclusive' | return v:false | endif
   const [pos, vpos] = [getcharpos('.'), getcharpos('v')] # [0, lnum, charcol, off]
   return mode ==# 'v' && (vpos[1] == pos[1] && vpos[2] < pos[2] || vpos[1] < pos[1])
     || mode ==# 'V'
     || mode ==# "\<C-v>" && vpos[2] < pos[2]
 enddef # }}}
-def MoveToKwdChar(motion: string, inExclusiveSel: bool): bool # {{{
+def MoveToKwdChar(motion: string): bool # {{{
   # @param {'w' | 'b' | 'e' | 'ge'} motion
-  # @param {bool} inExclusiveSel - in visual mode, whether the selection is exclusive
-  #                                if true, move the cursor to the correct position
   # @return {bool} - whether the cursor has moved to a keyword character
   const isForward = IsForwardMotion(motion)
   const IsAtLineEdge = isForward ? IsAtLineEnd : IsAtLineStart
@@ -124,9 +123,8 @@ def MoveToKwdChar(motion: string, inExclusiveSel: bool): bool # {{{
     endwhile
   finally
     &selection = sel
-    if motionType == 1 && inExclusiveSel && IsSelEnd()
-      # in visual mode, move the cursor to the correct position
-      # if the inclusive motion was last-used and the last character of the selection is excluded in an operation
+    if motionType == 1 && IsExclusiveSelEnd()
+      # if the inclusive motion was used at the end of the exclusive selection, move the cursor to the correct position
       normal! l
     endif
   endtry
@@ -149,10 +147,9 @@ export def Word(motion: string)
         &selection = 'inclusive'
       endif
       var isMoved: bool
-      const isExclusive = &selection ==# 'exclusive'
       const oldpos = getcursorcharpos()
       for i in range(cnt)
-        isMoved = MoveToKwdChar(motion, isExclusive)
+        isMoved = MoveToKwdChar(motion)
         if ! isMoved | break | endif
       endfor
       # treat 'cw' like 'ce' if the cursor has moved from a non-blank character (`WORD`)
@@ -173,9 +170,8 @@ export def Word(motion: string)
     endtry
   else
     # move the cursor in any mode except operator-pending mode
-    const isExclusive = mode =~# "[vV\<C-v>]" && &selection ==# 'exclusive'
     for i in range(cnt)
-      const isMoved = MoveToKwdChar(motion, isExclusive)
+      const isMoved = MoveToKwdChar(motion)
       if ! isMoved | break | endif
     endfor
   endif
