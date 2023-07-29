@@ -50,10 +50,11 @@ Context motions simply move the cursor
     endif
     return indices
   endfunction
-  function! s:moveInLine(lnum, motion, isInitialLine)
+  function! s:moveInLine(lnum, motion, isInitialLine, isExclusiveSelEnd)
     " @param {number} lnum - move in the line with the specified line number
     " @param {'w' | 'b' | 'e' | 'ge'} motion
     " @param {bool} isInitialLine - skip the initial position even if it is a keyword character
+    " @param {bool} isExclusiveSelEnd - whether the cursor is the end of the exclusive selection
     " @return {number} - next line number
     let isForward = a:motion ==# 'w' || a:motion ==# 'e' ? 1 : 0
     let line = getline(a:lnum)
@@ -65,6 +66,7 @@ Context motions simply move the cursor
         if a:isInitialLine && get(indices, 0, -1) == 1 | let indices = indices[1 :] | endif
         " move to the last character of the line before moving to the next line
         let lineEnd = strcharlen(matchstr(line, '^.\{-}\ze\s*$'))
+              \ + (a:isExclusiveSelEnd ? 1 : 0)
         if get(indices, -1, -1) != lineEnd | call add(indices, lineEnd) | endif
       else
         " skip the initial position
