@@ -61,6 +61,9 @@ Context motions simply move the cursor
     " skip if the line is blank
     if line !=# ''
       let indices = s:getKwdIndices(line, a:motion)
+      if a:motion ==# 'e' && a:isExclusiveSelEnd
+        let indices = map(indices, {k, v -> v + 1})
+      endif
       if isForward
         " skip the initial position
         if a:isInitialLine && get(indices, 0, -1) == 1 | let indices = indices[1 :] | endif
