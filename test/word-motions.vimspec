@@ -50,18 +50,18 @@ Context motions simply move the cursor
     endif
     return indices
   endfunction
-  function! s:moveInLine(lnum, motion, isInitialLine, isExclusiveSelEnd)
+  function! s:moveInLine(lnum, motion, isInitialLine, isExSelEnd)
     " @param {number} lnum - move in the line with the specified line number
     " @param {'w' | 'b' | 'e' | 'ge'} motion
     " @param {bool} isInitialLine - skip the initial position even if it is a keyword character
-    " @param {bool} isExclusiveSelEnd - whether the cursor is the end of the exclusive selection
+    " @param {bool} isExSelEnd - whether the cursor is the end of the exclusive selection
     " @return {number} - next line number
     let isForward = a:motion ==# 'w' || a:motion ==# 'e' ? 1 : 0
     let line = getline(a:lnum)
     " skip if the line is blank
     if line !=# ''
       let indices = s:getKwdIndices(line, a:motion)
-      if a:motion ==# 'e' && a:isExclusiveSelEnd
+      if a:motion ==# 'e' && a:isExSelEnd
         let indices = map(indices, {k, v -> v + 1})
       endif
       if isForward
@@ -69,7 +69,7 @@ Context motions simply move the cursor
         if a:isInitialLine && get(indices, 0, -1) == 1 | let indices = indices[1 :] | endif
         " move to the last character of the line before moving to the next line
         let lineEnd = strcharlen(matchstr(line, '^.\{-}\ze\s*$'))
-              \ + (a:isExclusiveSelEnd ? 1 : 0)
+              \ + (a:isExSelEnd ? 1 : 0)
         if get(indices, -1, -1) != lineEnd | call add(indices, lineEnd) | endif
       else
         " skip the initial position
@@ -85,15 +85,15 @@ Context motions simply move the cursor
     endif
     return a:lnum + (isForward ? 1 : -1)
   endfunction
-  def s:moveWhole(motion: string, isExclusiveSelEnd = v:false)
+  def s:moveWhole(motion: string, isExSelEnd = v:false)
     # move forward from the current position to the end of the buffer, or backward to the start
     # @param {'w' | 'b' | 'e' | 'ge'} motion
-    # @param {bool=} isExclusiveSelEnd - whether the cursor is the end of the exclusive selection
+    # @param {bool=} isExSelEnd - whether the cursor is the end of the exclusive selection
     const isForward = motion ==# 'w' || motion ==# 'e'
     const IsAtBufferEdge = isForward ? (lnum) => lnum <= line('$') : (lnum) => lnum > 0
-    var lnum = s:moveInLine(line('.'), motion, v:true, isExclusiveSelEnd)
+    var lnum = s:moveInLine(line('.'), motion, v:true, isExSelEnd)
     while IsAtBufferEdge(lnum)
-      lnum = s:moveInLine(lnum, motion, v:false, isExclusiveSelEnd)
+      lnum = s:moveInLine(lnum, motion, v:false, isExSelEnd)
     endwhile
   enddef
   Context in normal mode
