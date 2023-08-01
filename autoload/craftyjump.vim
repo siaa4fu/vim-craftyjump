@@ -57,19 +57,10 @@ enddef # }}}
 def IsExclusiveSelEnd(pos: list<number>): bool # {{{
   # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
   # @return {bool} - whether the cursor is the end of the exclusive selection
-  if &selection !=# 'exclusive' | return v:false | endif
-  const mode = mode()
-  if mode ==# 'v'
+  if &selection ==# 'exclusive' && mode() =~# "[vV\<C-v>]"
     # return true if the cursor is the end of the selection, not the start
     const vpos = getcharpos('v')
     return vpos[1] == pos[1] && vpos[2] < pos[2] || vpos[1] < pos[1]
-  elseif mode ==# 'V'
-    # always return true (always treat the cursor as the end)
-    return v:true
-  elseif mode ==# "\<C-v>"
-    # return true if the cursor column is greater than the column of the opposite position
-    const vpos = getcharpos('v')
-    return vpos[2] < pos[2]
   endif
   return v:false
 enddef # }}}
