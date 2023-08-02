@@ -4,14 +4,6 @@ Describe word-motions
 
 let s:expect = themis#helper('expect')
 
-function! s:init_test_buffer(lines)
-  " @param {list<string>} lines - set lines in the test buffer
-  new | only!
-  for lnum in range(1, len(a:lines))
-    call setline(lnum, a:lines[lnum - 1])
-  endfor
-endfunction
-
 Context motions simply move the cursor
   function! s:getKwdIndices(line, motion)
     " @param {string} line
@@ -98,7 +90,7 @@ Context motions simply move the cursor
   enddef
   Context in normal mode
     Before
-      call s:init_test_buffer(readfile('test/sample_text'))
+      call InitTestBuffer(readfile('test/sample_text'))
     End
     It moves forward using 'w' from the first line
       normal! gg0
@@ -133,7 +125,7 @@ Context motions simply move the cursor
     Before
       set selection=inclusive
       " use lines 8 to 16
-      call s:init_test_buffer(readfile('test/sample_text')[7 : 15])
+      call InitTestBuffer(readfile('test/sample_text')[7 : 15])
     End
     After
       call s:expect(&selection).to_equal('inclusive')
@@ -176,7 +168,7 @@ Context motions simply move the cursor
     Before
       set selection=exclusive
       " use lines 8 to 16
-      call s:init_test_buffer(readfile('test/sample_text')[7 : 15])
+      call InitTestBuffer(readfile('test/sample_text')[7 : 15])
     End
     After
       call s:expect(&selection).to_equal('exclusive')
@@ -219,7 +211,7 @@ Context motions simply move the cursor
     Before
       set selection=inclusive
       " use lines 8 to 16
-      call s:init_test_buffer(readfile('test/sample_text')[7 : 15])
+      call InitTestBuffer(readfile('test/sample_text')[7 : 15])
     End
     After
       call s:expect(&selection).to_equal('inclusive')
@@ -262,7 +254,7 @@ Context motions simply move the cursor
     Before
       set selection=exclusive
       " use lines 8 to 16
-      call s:init_test_buffer(readfile('test/sample_text')[7 : 15])
+      call InitTestBuffer(readfile('test/sample_text')[7 : 15])
     End
     After
       call s:expect(&selection).to_equal('exclusive')
@@ -305,7 +297,7 @@ Context motions simply move the cursor
     Before
       set selection=inclusive
       " use lines 8 to 16
-      call s:init_test_buffer(readfile('test/sample_text')[7 : 15])
+      call InitTestBuffer(readfile('test/sample_text')[7 : 15])
     End
     After
       call s:expect(&selection).to_equal('inclusive')
@@ -348,7 +340,7 @@ Context motions simply move the cursor
     Before
       set selection=exclusive
       " use lines 8 to 16
-      call s:init_test_buffer(readfile('test/sample_text')[7 : 15])
+      call InitTestBuffer(readfile('test/sample_text')[7 : 15])
     End
     After
       call s:expect(&selection).to_equal('exclusive')
@@ -396,7 +388,7 @@ Context motions are used after operators
   endfunction
   Before
     " use lines 8 to 16
-    call s:init_test_buffer(readfile('test/sample_text')[7 : 15])
+    call InitTestBuffer(readfile('test/sample_text')[7 : 15])
   End
   Context d{motion} - delete words
     It 'dw' (exclusive)

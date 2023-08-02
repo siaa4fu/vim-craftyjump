@@ -3,6 +3,14 @@ scriptencoding utf-8
 
 themis#option('runtimepath', fnamemodify(expand('<sfile>'), ':h:h'))
 
+def g:InitTestBuffer(lines: list<string>)
+  # @param {list<string>} lines - set lines in the test buffer
+  new | only!
+  for lnum in range(1, len(lines))
+    setline(lnum, lines[lnum - 1])
+  endfor
+enddef
+
 # @param {list} expect - [lnum, charcol] of expected position
 #   the column number is a 1-based character index, not a byte index
 #   alternatively, the column number can be specified using following strings
