@@ -2,7 +2,7 @@ scriptencoding utf-8
 " the text 'themis#suite()' is required to run test#viml#themis#test_file()
 Describe word-motions
 
-let s:expect = function(themis#helper('expect'))
+let s:expect = themis#helper('expect')
 
 function! s:init_test_buffer(lines)
   " @param {list<string>} lines - set lines in the test buffer
