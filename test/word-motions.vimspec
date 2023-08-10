@@ -3,6 +3,7 @@ scriptencoding utf-8
 Describe word-motions
 
 let s:expect = themis#helper('expect')
+let s:samplelines = readfile('test/sample_for_word_motions')
 
 Context motions simply move the cursor
   function! s:getKwdIndices(line, motion)
@@ -82,15 +83,15 @@ Context motions simply move the cursor
     # @param {'w' | 'b' | 'e' | 'ge'} motion
     # @param {bool=} isExSelEnd - whether the cursor is the end of the exclusive selection
     const isForward = motion ==# 'w' || motion ==# 'e'
-    const IsAtBufferEdge = isForward ? (lnum) => lnum <= line('$') : (lnum) => lnum > 0
+    const NotAtBufferEdge = isForward ? (lnum) => lnum <= line('$') : (lnum) => lnum > 0
     var lnum = s:moveInLine(line('.'), motion, v:true, isExSelEnd)
-    while IsAtBufferEdge(lnum)
+    while NotAtBufferEdge(lnum)
       lnum = s:moveInLine(lnum, motion, v:false, isExSelEnd)
     endwhile
   enddef
   Context in normal mode
     Before
-      call InitTestBuffer(readfile('test/sample_for_word_motions'))
+      call InitTestBuffer(s:samplelines)
     End
     It moves forward using 'w' from the first line
       normal! gg0
@@ -121,275 +122,269 @@ Context motions simply move the cursor
       call s:expect(v:null).to_be_at_position([1, '0'])
     End
   End
-  Context in characterwise visual mode (inclusive)
+  Context in visual mode
     Before
-      set selection=inclusive
       " use lines 8 to 16
-      call InitTestBuffer(readfile('test/sample_for_word_motions')[7 : 15])
+      call InitTestBuffer(s:samplelines[7 : 15])
     End
-    After
-      call s:expect(&selection).to_equal('inclusive')
-      call s:expect(mode()).to_equal('v')
+    Context [v] characterwise (inclusive)
+      Before
+        set selection=inclusive
+      End
+      After
+        call s:expect(&selection).to_equal('inclusive')
+        call s:expect(mode()).to_equal('v')
+      End
+      It 'w'
+        " move the end of the selection
+        normal! gg0v
+        call s:moveWhole('w', v:false)
+        " move the start of the selection
+        normal! o
+        call s:moveWhole('w', v:false)
+      End
+      It 'b'
+        " move the start of the selection
+        normal! G$v
+        call s:moveWhole('b', v:false)
+        " move the end of the selection
+        normal! o
+        call s:moveWhole('b', v:false)
+      End
+      It 'e'
+        " move the end of the selection
+        normal! gg0v
+        call s:moveWhole('e', v:false)
+        " move the start of the selection
+        normal! o
+        call s:moveWhole('e', v:false)
+      End
+      It 'ge'
+        " move the start of the selection
+        normal! G$v
+        call s:moveWhole('ge', v:false)
+        " move the end of the selection
+        normal! o
+        call s:moveWhole('ge', v:false)
+      End
     End
-    It 'w'
-      " move the end of the selection
-      normal! gg0v
-      call s:moveWhole('w', v:false)
-      " move the start of the selection
-      normal! o
-      call s:moveWhole('w', v:false)
+    Context [v] characterwise (exclusive)
+      Before
+        set selection=exclusive
+      End
+      After
+        call s:expect(&selection).to_equal('exclusive')
+        call s:expect(mode()).to_equal('v')
+      End
+      It 'w'
+        " move the end of the selection
+        normal! gg0v
+        call s:moveWhole('w', v:true)
+        " move the start of the selection
+        normal! o
+        call s:moveWhole('w', v:false)
+      End
+      It 'b'
+        " move the start of the selection
+        normal! G$v
+        call s:moveWhole('b', v:false)
+        " move the end of the selection
+        normal! o
+        call s:moveWhole('b', v:true)
+      End
+      It 'e'
+        " move the end of the selection
+        normal! gg0v
+        call s:moveWhole('e', v:true)
+        " move the start of the selection
+        normal! o
+        call s:moveWhole('e', v:false)
+      End
+      It 'ge'
+        " move the start of the selection
+        normal! G$v
+        call s:moveWhole('ge', v:false)
+        " move the end of the selection
+        normal! o
+        call s:moveWhole('ge', v:true)
+      End
     End
-    It 'b'
-      " move the start of the selection
-      normal! G$v
-      call s:moveWhole('b', v:false)
-      " move the end of the selection
-      normal! o
-      call s:moveWhole('b', v:false)
+    Context [V] linewise (inclusive)
+      Before
+        set selection=inclusive
+      End
+      After
+        call s:expect(&selection).to_equal('inclusive')
+        call s:expect(mode()).to_equal('V')
+      End
+      It 'w'
+        " move the end of the selection
+        normal! gg0V
+        call s:moveWhole('w', v:false)
+        " move the start of the selection
+        normal! o
+        call s:moveWhole('w', v:false)
+      End
+      It 'b'
+        " move the start of the selection
+        normal! G$V
+        call s:moveWhole('b', v:false)
+        " move the end of the selection
+        normal! o
+        call s:moveWhole('b', v:false)
+      End
+      It 'e'
+        " move the end of the selection
+        normal! gg0V
+        call s:moveWhole('e', v:false)
+        " move the start of the selection
+        normal! o
+        call s:moveWhole('e', v:false)
+      End
+      It 'ge'
+        " move the start of the selection
+        normal! G$V
+        call s:moveWhole('ge', v:false)
+        " move the end of the selection
+        normal! o
+        call s:moveWhole('ge', v:false)
+      End
     End
-    It 'e'
-      " move the end of the selection
-      normal! gg0v
-      call s:moveWhole('e', v:false)
-      " move the start of the selection
-      normal! o
-      call s:moveWhole('e', v:false)
+    Context [V] linewise (exclusive)
+      Before
+        set selection=exclusive
+      End
+      After
+        call s:expect(&selection).to_equal('exclusive')
+        call s:expect(mode()).to_equal('V')
+      End
+      It 'w'
+        " move the end of the selection
+        normal! gg0V
+        call s:moveWhole('w', v:true)
+        " move the start of the selection
+        normal! o
+        call s:moveWhole('w', v:false)
+      End
+      It 'b'
+        " move the start of the selection
+        normal! G$V
+        call s:moveWhole('b', v:false)
+        " move the end of the selection
+        normal! o
+        call s:moveWhole('b', v:true)
+      End
+      It 'e'
+        " move the end of the selection
+        normal! gg0V
+        call s:moveWhole('e', v:true)
+        " move the start of the selection
+        normal! o
+        call s:moveWhole('e', v:false)
+      End
+      It 'ge'
+        " move the start of the selection
+        normal! G$V
+        call s:moveWhole('ge', v:false)
+        " move the end of the selection
+        normal! o
+        call s:moveWhole('ge', v:true)
+      End
     End
-    It 'ge'
-      " move the start of the selection
-      normal! G$v
-      call s:moveWhole('ge', v:false)
-      " move the end of the selection
-      normal! o
-      call s:moveWhole('ge', v:false)
+    Context [<C-v>] blockwise (inclusive)
+      Before
+        set selection=inclusive
+      End
+      After
+        call s:expect(&selection).to_equal('inclusive')
+        call s:expect(mode()).to_equal("\<C-v>")
+      End
+      It 'w'
+        " move the end of the selection
+        execute "normal! gg0\<C-v>"
+        call s:moveWhole('w', v:false)
+        " move the start of the selection
+        normal! o
+        call s:moveWhole('w', v:false)
+      End
+      It 'b'
+        " move the start of the selection
+        execute "normal! G$\<C-v>"
+        call s:moveWhole('b', v:false)
+        " move the end of the selection
+        normal! o
+        call s:moveWhole('b', v:false)
+      End
+      It 'e'
+        " move the end of the selection
+        execute "normal! gg0\<C-v>"
+        call s:moveWhole('e', v:false)
+        " move the start of the selection
+        normal! o
+        call s:moveWhole('e', v:false)
+      End
+      It 'ge'
+        " move the start of the selection
+        execute "normal! G$\<C-v>"
+        call s:moveWhole('ge', v:false)
+        " move the end of the selection
+        normal! o
+        call s:moveWhole('ge', v:false)
+      End
     End
-  End
-  Context in characterwise visual mode (exclusive)
-    Before
-      set selection=exclusive
-      " use lines 8 to 16
-      call InitTestBuffer(readfile('test/sample_for_word_motions')[7 : 15])
-    End
-    After
-      call s:expect(&selection).to_equal('exclusive')
-      call s:expect(mode()).to_equal('v')
-    End
-    It 'w'
-      " move the end of the selection
-      normal! gg0v
-      call s:moveWhole('w', v:true)
-      " move the start of the selection
-      normal! o
-      call s:moveWhole('w', v:false)
-    End
-    It 'b'
-      " move the start of the selection
-      normal! G$v
-      call s:moveWhole('b', v:false)
-      " move the end of the selection
-      normal! o
-      call s:moveWhole('b', v:true)
-    End
-    It 'e'
-      " move the end of the selection
-      normal! gg0v
-      call s:moveWhole('e', v:true)
-      " move the start of the selection
-      normal! o
-      call s:moveWhole('e', v:false)
-    End
-    It 'ge'
-      " move the start of the selection
-      normal! G$v
-      call s:moveWhole('ge', v:false)
-      " move the end of the selection
-      normal! o
-      call s:moveWhole('ge', v:true)
-    End
-  End
-  Context in linewise visual mode (inclusive)
-    Before
-      set selection=inclusive
-      " use lines 8 to 16
-      call InitTestBuffer(readfile('test/sample_for_word_motions')[7 : 15])
-    End
-    After
-      call s:expect(&selection).to_equal('inclusive')
-      call s:expect(mode()).to_equal('V')
-    End
-    It 'w'
-      " move the end of the selection
-      normal! gg0V
-      call s:moveWhole('w', v:false)
-      " move the start of the selection
-      normal! o
-      call s:moveWhole('w', v:false)
-    End
-    It 'b'
-      " move the start of the selection
-      normal! G$V
-      call s:moveWhole('b', v:false)
-      " move the end of the selection
-      normal! o
-      call s:moveWhole('b', v:false)
-    End
-    It 'e'
-      " move the end of the selection
-      normal! gg0V
-      call s:moveWhole('e', v:false)
-      " move the start of the selection
-      normal! o
-      call s:moveWhole('e', v:false)
-    End
-    It 'ge'
-      " move the start of the selection
-      normal! G$V
-      call s:moveWhole('ge', v:false)
-      " move the end of the selection
-      normal! o
-      call s:moveWhole('ge', v:false)
-    End
-  End
-  Context in linewise visual mode (exclusive)
-    Before
-      set selection=exclusive
-      " use lines 8 to 16
-      call InitTestBuffer(readfile('test/sample_for_word_motions')[7 : 15])
-    End
-    After
-      call s:expect(&selection).to_equal('exclusive')
-      call s:expect(mode()).to_equal('V')
-    End
-    It 'w'
-      " move the end of the selection
-      normal! gg0V
-      call s:moveWhole('w', v:true)
-      " move the start of the selection
-      normal! o
-      call s:moveWhole('w', v:false)
-    End
-    It 'b'
-      " move the start of the selection
-      normal! G$V
-      call s:moveWhole('b', v:false)
-      " move the end of the selection
-      normal! o
-      call s:moveWhole('b', v:true)
-    End
-    It 'e'
-      " move the end of the selection
-      normal! gg0V
-      call s:moveWhole('e', v:true)
-      " move the start of the selection
-      normal! o
-      call s:moveWhole('e', v:false)
-    End
-    It 'ge'
-      " move the start of the selection
-      normal! G$V
-      call s:moveWhole('ge', v:false)
-      " move the end of the selection
-      normal! o
-      call s:moveWhole('ge', v:true)
-    End
-  End
-  Context in blockwise visual mode (inclusive)
-    Before
-      set selection=inclusive
-      " use lines 8 to 16
-      call InitTestBuffer(readfile('test/sample_for_word_motions')[7 : 15])
-    End
-    After
-      call s:expect(&selection).to_equal('inclusive')
-      call s:expect(mode()).to_equal("\<C-v>")
-    End
-    It 'w'
-      " move the end of the selection
-      execute "normal! gg0\<C-v>"
-      call s:moveWhole('w', v:false)
-      " move the start of the selection
-      normal! o
-      call s:moveWhole('w', v:false)
-    End
-    It 'b'
-      " move the start of the selection
-      execute "normal! G$\<C-v>"
-      call s:moveWhole('b', v:false)
-      " move the end of the selection
-      normal! o
-      call s:moveWhole('b', v:false)
-    End
-    It 'e'
-      " move the end of the selection
-      execute "normal! gg0\<C-v>"
-      call s:moveWhole('e', v:false)
-      " move the start of the selection
-      normal! o
-      call s:moveWhole('e', v:false)
-    End
-    It 'ge'
-      " move the start of the selection
-      execute "normal! G$\<C-v>"
-      call s:moveWhole('ge', v:false)
-      " move the end of the selection
-      normal! o
-      call s:moveWhole('ge', v:false)
-    End
-  End
-  Context in blockwise visual mode (exclusive)
-    Before
-      set selection=exclusive
-      " use lines 8 to 16
-      call InitTestBuffer(readfile('test/sample_for_word_motions')[7 : 15])
-    End
-    After
-      call s:expect(&selection).to_equal('exclusive')
-      call s:expect(mode()).to_equal("\<C-v>")
-    End
-    It 'w'
-      " move the end of the selection
-      execute "normal! gg0\<C-v>"
-      call s:moveWhole('w', v:true)
-      " move the start of the selection
-      normal! o
-      call s:moveWhole('w', v:false)
-    End
-    It 'b'
-      " move the start of the selection
-      execute "normal! G$\<C-v>"
-      call s:moveWhole('b', v:false)
-      " move the end of the selection
-      normal! o
-      call s:moveWhole('b', v:true)
-    End
-    It 'e'
-      " move the end of the selection
-      execute "normal! gg0\<C-v>"
-      call s:moveWhole('e', v:true)
-      " move the start of the selection
-      normal! o
-      call s:moveWhole('e', v:false)
-    End
-    It 'ge'
-      " move the start of the selection
-      execute "normal! G$\<C-v>"
-      call s:moveWhole('ge', v:false)
-      " move the end of the selection
-      normal! o
-      call s:moveWhole('ge', v:true)
+    Context [<C-v>] blockwise (exclusive)
+      Before
+        set selection=exclusive
+      End
+      After
+        call s:expect(&selection).to_equal('exclusive')
+        call s:expect(mode()).to_equal("\<C-v>")
+      End
+      It 'w'
+        " move the end of the selection
+        execute "normal! gg0\<C-v>"
+        call s:moveWhole('w', v:true)
+        " move the start of the selection
+        normal! o
+        call s:moveWhole('w', v:false)
+      End
+      It 'b'
+        " move the start of the selection
+        execute "normal! G$\<C-v>"
+        call s:moveWhole('b', v:false)
+        " move the end of the selection
+        normal! o
+        call s:moveWhole('b', v:true)
+      End
+      It 'e'
+        " move the end of the selection
+        execute "normal! gg0\<C-v>"
+        call s:moveWhole('e', v:true)
+        " move the start of the selection
+        normal! o
+        call s:moveWhole('e', v:false)
+      End
+      It 'ge'
+        " move the start of the selection
+        execute "normal! G$\<C-v>"
+        call s:moveWhole('ge', v:false)
+        " move the end of the selection
+        normal! o
+        call s:moveWhole('ge', v:true)
+      End
     End
   End
 End
 
 Context motions are used after operators
+  Before
+    " use lines 8 to 16
+    call InitTestBuffer(s:samplelines[7 : 15])
+  End
   function! s:dotrepeat(expect)
     normal! .
     call s:expect(getline('.')).to_equal(a:expect)
   endfunction
-  Before
-    " use lines 8 to 16
-    call InitTestBuffer(readfile('test/sample_for_word_motions')[7 : 15])
-  End
   Context d{motion} - delete words
     It 'dw' (exclusive)
       normal! gg0
