@@ -64,6 +64,7 @@ def IsExclusiveSelEnd(pos: list<number>): bool # {{{
   endif
   return v:false
 enddef # }}}
+
 def MoveToKwdChar(motion: string): bool # {{{
   # @param {'w' | 'b' | 'e' | 'ge'} motion
   # @return {bool} - whether the cursor has moved to a keyword character
@@ -116,7 +117,6 @@ def MoveToKwdChar(motion: string): bool # {{{
   endwhile
   return isMoved
 enddef # }}}
-
 export def Word(motion: string)
   # @param {'w' | 'b' | 'e' | 'ge'} motion
   const cnt = v:count1
@@ -158,6 +158,82 @@ export def Word(motion: string)
     # move the cursor in any mode except operator-pending mode
     for i in range(cnt)
       const isMoved = MoveToKwdChar(motion)
+      if ! isMoved | break | endif
+    endfor
+  endif
+enddef
+
+def MoveToCharInWord(motion: string): bool # {{{
+  # @param {'w' | 'b' | 'e' | 'ge'} motion
+  # @return {bool} - whether the cursor has moved to a word in a word (wiw)
+  const isForward = IsForwardMotion(motion)
+  var pat: string
+  if motion ==# 'w' || motion ==# 'b'
+    # wiw-head
+    #   the start of a word
+    #   uppercase before or after lowercase
+    #   alphabet after non-alphabet
+    pat = '\<.\|\u\l\|\l\zs\u\|\A\zs\a'
+  elseif motion ==# 'e' || motion ==# 'ge'
+    # wiw-tail
+    #   the end of a word
+    #   lowercase before uppercase
+    #   uppercase before uppercase and lowercase
+    #   alphabet before non-alphabet
+    pat = '.\>\|\l\u\|\u\u\l\|\a\A'
+  else
+    echoerr 'Unsupported motion:' motion
+  endif
+  const isMoved = search(pat, isForward ? 'W' : 'bW') > 0
+  if isMoved
+    const pos = getcursorcharpos()
+    const isExSelEnd = IsExclusiveSelEnd(pos)
+    # shift the motion 'e' one to the right at the end of the exclusive selection, like the word-motion 'e'
+    if motion ==# 'e' && isExSelEnd | execute 'normal! l' | endif
+  endif
+  return isMoved
+enddef # }}}
+export def WordInWord(motion: string)
+  # @param {'w' | 'b' | 'e' | 'ge'} motion
+  const cnt = v:count1
+  const mode = mode(v:true)
+  if mode =~# '^no'
+    # set the operator to be linewise, characterwise or blockwise (`forced-motion`)
+    execute 'normal!' (mode[2] ?? 'v')
+    # temporarily override &selection, then restore it after the operator is done
+    const sel = &selection
+    try
+      if motion ==# 'w' || motion ==# 'b'
+        &selection = 'exclusive'
+      elseif motion ==# 'e' || motion ==# 'ge'
+        &selection = 'inclusive'
+      endif
+      var isMoved: bool
+      const prevpos = getcursorcharpos()
+      for i in range(cnt)
+        isMoved = MoveToCharInWord(motion)
+        if ! isMoved | break | endif
+      endfor
+      # treat 'cw' like 'ce' if the cursor has moved from a non-blank character (`WORD`)
+      if isMoved && v:operator ==# 'c' && motion ==# 'w' && IsCharUnderCursor('\S', prevpos)
+        # if the character before the cursor ends with a whitespace, move backward to a non-blank character
+        const pos = getcursorcharpos()
+        if pos[2] > 1
+          # get characters that the cursor has passed through while moving, but only on the cursor line
+          const passedChars = getline(pos[1])[(prevpos[1] == pos[1] ? prevpos[2] - 1 : 0) : pos[2] - 2]
+          const leftoffset = strcharlen(matchstr(passedChars, '\s\+\%(\S\&[^[:keyword:]]\)*$'))
+          if leftoffset > 0 | execute 'normal!' leftoffset .. 'h' | endif
+        endif
+      endif
+    finally
+      timer_start(100, (_) => {
+        &selection = sel
+      })
+    endtry
+  else
+    # move the cursor in any mode except operator-pending mode
+    for i in range(cnt)
+      const isMoved = MoveToCharInWord(motion)
       if ! isMoved | break | endif
     endfor
   endif
