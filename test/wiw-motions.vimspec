@@ -1,0 +1,754 @@
+scriptencoding utf-8
+" the text 'themis#suite()' is required to run test#viml#themis#test_file()
+Describe wiw-motions
+
+let s:expect = function(themis#helper('expect'))
+let s:samplelines = readfile('test/sample_for_wiw_motions')
+
+Context motions simply move the cursor
+  Before
+    " use line 1 to 3
+    call InitTestBuffer(s:samplelines[0 : 2])
+  End
+  function! s:getIndices(motion)
+    " @param {'w' | 'b' | 'e' | 'ge'} motion
+    "   'w'  - get wiw-head positions and return their indices
+    "   'b'  - get wiw-head positions and return their indices reversed
+    "   'e'  - get wiw-tail positions and return their indices
+    "   'ge' - get wiw-tail positions and return their indices reversed
+    " @return {list<number>} - character indices of wiw-head or wiw-tail
+    let indices = []
+    let Put = function(a:motion ==# 'w' || a:motion ==# 'e' ? 'add' : 'insert', [indices])
+    " get wiw-head patterns on line 5 and wiw-tail patterns on line 6
+    let line = s:samplelines[a:motion ==# 'w' || a:motion ==# 'b' ? 4 : 5]
+    let ptn_wiw = '\*'
+    let pos = matchstrpos(line, ptn_wiw) " 0-based byte index
+    while pos[0] !=# ''
+      " matchstrpos(...)[1] gives the 0-based byte index of the starting position of the match
+      call Put(charidx(line, pos[1]) + 1) " convert 0-based character index to 1-based character index
+      let pos = matchstrpos(line, ptn_wiw, pos[2])
+    endwhile
+    return indices
+  endfunction
+  function! s:moveInLine(lnum, motion, isInitialLine, isExSelEnd)
+    " @param {number} lnum - move in the line with the specified line number
+    " @param {'w' | 'b' | 'e' | 'ge'} motion
+    " @param {bool} isInitialLine - skip the initial position even if it is a keyword character
+    " @param {bool} isExSelEnd - whether the cursor is the end of the exclusive selection
+    " @return {number} - next line number
+    let isForward = a:motion ==# 'w' || a:motion ==# 'e' ? 1 : 0
+    let line = getline(a:lnum)
+    " skip if the line is blank
+    if line !=# ''
+      let indices = s:getIndices(a:motion)
+      if a:motion ==# 'e' && a:isExSelEnd
+        let indices = map(indices, {k, v -> v + 1})
+      endif
+      if isForward
+        " skip the initial position
+        if a:isInitialLine && get(indices, 0, -1) == 1 | let indices = indices[1 :] | endif
+      else
+        " skip the initial position
+        if a:isInitialLine && get(indices, 0, -1) == strcharlen(line) | let indices = indices[1 :] | endif
+      endif
+      for index in indices
+        execute "normal \<Plug>(craftyjump-wiw-" . a:motion . ')'
+        call s:expect(v:null).to_be_at_position([a:lnum, index])
+      endfor
+    endif
+    return a:lnum + (isForward ? 1 : -1)
+  endfunction
+  def s:moveWhole(motion: string, isExSelEnd = v:false)
+    # move forward from the current position to the end of the buffer, or backward to the start
+    # @param {'w' | 'b' | 'e' | 'ge'} motion
+    # @param {bool=} isExSelEnd - whether the cursor is the end of the exclusive selection
+    const isForward = motion ==# 'w' || motion ==# 'e'
+    const IsAtBufferEdge = isForward ? (lnum) => lnum <= line('$') : (lnum) => lnum > 0
+    var lnum = s:moveInLine(line('.'), motion, v:true, isExSelEnd)
+    while IsAtBufferEdge(lnum)
+      lnum = s:moveInLine(lnum, motion, v:false, isExSelEnd)
+    endwhile
+  enddef
+  Context in normal mode
+    It moves forward using 'w' from the first line
+      normal! gg0
+      call s:moveWhole('w')
+    End
+    It moves backward using 'b' from the last line
+      normal! G$
+      call s:moveWhole('b')
+    End
+    It moves forward using 'e' from the first line
+      normal! gg0
+      call s:moveWhole('e')
+    End
+    It moves backward using 'ge' from the last line
+      normal! G$
+      call s:moveWhole('ge')
+    End
+  End
+  Context in characterwise visual mode (inclusive)
+    Before
+      set selection=inclusive
+    End
+    After
+      call s:expect(&selection).to_equal('inclusive')
+      call s:expect(mode()).to_equal('v')
+    End
+    It 'w'
+      " move the end of the selection
+      normal! gg0v
+      call s:moveWhole('w', v:false)
+      " move the start of the selection
+      normal! o
+      call s:moveWhole('w', v:false)
+    End
+    It 'b'
+      " move the start of the selection
+      normal! G$v
+      call s:moveWhole('b', v:false)
+      " move the end of the selection
+      normal! o
+      call s:moveWhole('b', v:false)
+    End
+    It 'e'
+      " move the end of the selection
+      normal! gg0v
+      call s:moveWhole('e', v:false)
+      " move the start of the selection
+      normal! o
+      call s:moveWhole('e', v:false)
+    End
+    It 'ge'
+      " move the start of the selection
+      normal! G$v
+      call s:moveWhole('ge', v:false)
+      " move the end of the selection
+      normal! o
+      call s:moveWhole('ge', v:false)
+    End
+  End
+  Context in characterwise visual mode (exclusive)
+    Before
+      set selection=exclusive
+    End
+    After
+      call s:expect(&selection).to_equal('exclusive')
+      call s:expect(mode()).to_equal('v')
+    End
+    It 'w'
+      " move the end of the selection
+      normal! gg0v
+      call s:moveWhole('w', v:true)
+      " move the start of the selection
+      normal! o
+      call s:moveWhole('w', v:false)
+    End
+    It 'b'
+      " move the start of the selection
+      normal! G$v
+      call s:moveWhole('b', v:false)
+      " move the end of the selection
+      normal! o
+      call s:moveWhole('b', v:true)
+    End
+    It 'e'
+      " move the end of the selection
+      normal! gg0v
+      call s:moveWhole('e', v:true)
+      " move the start of the selection
+      normal! o
+      call s:moveWhole('e', v:false)
+    End
+    It 'ge'
+      " move the start of the selection
+      normal! G$v
+      call s:moveWhole('ge', v:false)
+      " move the end of the selection
+      normal! o
+      call s:moveWhole('ge', v:true)
+    End
+  End
+  Context in linewise visual mode (inclusive)
+    Before
+      set selection=inclusive
+    End
+    After
+      call s:expect(&selection).to_equal('inclusive')
+      call s:expect(mode()).to_equal('V')
+    End
+    It 'w'
+      " move the end of the selection
+      normal! gg0V
+      call s:moveWhole('w', v:false)
+      " move the start of the selection
+      normal! o
+      call s:moveWhole('w', v:false)
+    End
+    It 'b'
+      " move the start of the selection
+      normal! G$V
+      call s:moveWhole('b', v:false)
+      " move the end of the selection
+      normal! o
+      call s:moveWhole('b', v:false)
+    End
+    It 'e'
+      " move the end of the selection
+      normal! gg0V
+      call s:moveWhole('e', v:false)
+      " move the start of the selection
+      normal! o
+      call s:moveWhole('e', v:false)
+    End
+    It 'ge'
+      " move the start of the selection
+      normal! G$V
+      call s:moveWhole('ge', v:false)
+      " move the end of the selection
+      normal! o
+      call s:moveWhole('ge', v:false)
+    End
+  End
+  Context in linewise visual mode (exclusive)
+    Before
+      set selection=exclusive
+    End
+    After
+      call s:expect(&selection).to_equal('exclusive')
+      call s:expect(mode()).to_equal('V')
+    End
+    It 'w'
+      " move the end of the selection
+      normal! gg0V
+      call s:moveWhole('w', v:true)
+      " move the start of the selection
+      normal! o
+      call s:moveWhole('w', v:false)
+    End
+    It 'b'
+      " move the start of the selection
+      normal! G$V
+      call s:moveWhole('b', v:false)
+      " move the end of the selection
+      normal! o
+      call s:moveWhole('b', v:true)
+    End
+    It 'e'
+      " move the end of the selection
+      normal! gg0V
+      call s:moveWhole('e', v:true)
+      " move the start of the selection
+      normal! o
+      call s:moveWhole('e', v:false)
+    End
+    It 'ge'
+      " move the start of the selection
+      normal! G$V
+      call s:moveWhole('ge', v:false)
+      " move the end of the selection
+      normal! o
+      call s:moveWhole('ge', v:true)
+    End
+  End
+  Context in blockwise visual mode (inclusive)
+    Before
+      set selection=inclusive
+    End
+    After
+      call s:expect(&selection).to_equal('inclusive')
+      call s:expect(mode()).to_equal("\<C-v>")
+    End
+    It 'w'
+      " move the end of the selection
+      execute "normal! gg0\<C-v>"
+      call s:moveWhole('w', v:false)
+      " move the start of the selection
+      normal! o
+      call s:moveWhole('w', v:false)
+    End
+    It 'b'
+      " move the start of the selection
+      execute "normal! G$\<C-v>"
+      call s:moveWhole('b', v:false)
+      " move the end of the selection
+      normal! o
+      call s:moveWhole('b', v:false)
+    End
+    It 'e'
+      " move the end of the selection
+      execute "normal! gg0\<C-v>"
+      call s:moveWhole('e', v:false)
+      " move the start of the selection
+      normal! o
+      call s:moveWhole('e', v:false)
+    End
+    It 'ge'
+      " move the start of the selection
+      execute "normal! G$\<C-v>"
+      call s:moveWhole('ge', v:false)
+      " move the end of the selection
+      normal! o
+      call s:moveWhole('ge', v:false)
+    End
+  End
+  Context in blockwise visual mode (exclusive)
+    Before
+      set selection=exclusive
+    End
+    After
+      call s:expect(&selection).to_equal('exclusive')
+      call s:expect(mode()).to_equal("\<C-v>")
+    End
+    It 'w'
+      " move the end of the selection
+      execute "normal! gg0\<C-v>"
+      call s:moveWhole('w', v:true)
+      " move the start of the selection
+      normal! o
+      call s:moveWhole('w', v:false)
+    End
+    It 'b'
+      " move the start of the selection
+      execute "normal! G$\<C-v>"
+      call s:moveWhole('b', v:false)
+      " move the end of the selection
+      normal! o
+      call s:moveWhole('b', v:true)
+    End
+    It 'e'
+      " move the end of the selection
+      execute "normal! gg0\<C-v>"
+      call s:moveWhole('e', v:true)
+      " move the start of the selection
+      normal! o
+      call s:moveWhole('e', v:false)
+    End
+    It 'ge'
+      " move the start of the selection
+      execute "normal! G$\<C-v>"
+      call s:moveWhole('ge', v:false)
+      " move the end of the selection
+      normal! o
+      call s:moveWhole('ge', v:true)
+    End
+  End
+End
+
+Context motions are used after operators
+  Before
+    " use line 1 to 2
+    call InitTestBuffer(s:samplelines[0 : 1])
+  End
+  function! s:dotrepeat(expect)
+    normal! .
+    call s:expect(getline('.')).to_equal(a:expect)
+  endfunction
+  Context d{motion} - delete words
+    It 'dw' (exclusive)
+      normal! gg0
+      " delete a word in a word and repeat
+      execute "normal d\<Plug>(craftyjump-wiw-w)"
+      call s:expect(getline('.')).to_equal('TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('BBBBBaaa1aa1a')
+      call s:dotrepeat('Baaa1aa1a')
+      call s:dotrepeat('aa1a')
+      call s:dotrepeat('a')
+      " next line
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      " delete 2 words in a word and repeat
+      execute "normal d2\<Plug>(craftyjump-wiw-w)"
+      call s:expect(getline('.')).to_equal('twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Baaa1aa1a')
+      call s:dotrepeat('a')
+    End
+    It 'db' (exclusive)
+      normal! G$
+      " delete a word in a word and repeat
+      execute "normal d\<Plug>(craftyjump-wiw-b)"
+      call s:expect(getline('.')).to_equal('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBa')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBa')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBa')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBa')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaa')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords a')
+      call s:dotrepeat('twowords TWOWORDS twoWords Twoa')
+      call s:dotrepeat('twowords TWOWORDS twoWords a')
+      call s:dotrepeat('twowords TWOWORDS twoa')
+      call s:dotrepeat('twowords TWOWORDS a')
+      call s:dotrepeat('twowords a')
+      call s:dotrepeat('a')
+      " previous line
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      " delete 2 words and repeat
+      execute "normal d2\<Plug>(craftyjump-wiw-b)"
+      call s:expect(getline('.')).to_equal('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBa')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaa')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_a')
+      call s:dotrepeat('twowords TWOWORDS twoWords Twoa')
+      call s:dotrepeat('twowords TWOWORDS twoa')
+      call s:dotrepeat('twowords a')
+    End
+    It 'de' (inclusive)
+      normal! gg0
+      " delete a word in a word and repeat
+      execute "normal d\<Plug>(craftyjump-wiw-e)"
+      call s:expect(getline('.')).to_equal(' TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('BBBBBaaa1aa1a')
+      call s:dotrepeat('Baaa1aa1a')
+      call s:dotrepeat('1aa1a')
+      call s:dotrepeat('1a')
+      call s:dotrepeat('')
+      " next line
+      call s:dotrepeat(' TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      " delete 2 words in a word and repeat
+      execute "normal d2\<Plug>(craftyjump-wiw-e)"
+      call s:expect(getline('.')).to_equal('Words TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('BBBBBaaa1aa1a')
+      call s:dotrepeat('1aa1a')
+      call s:dotrepeat('')
+    End
+    It 'dge' (inclusive)
+      normal! G$
+      " delete a word in a word and repeat
+      execute "normal d\<Plug>(craftyjump-wiw-ge)"
+      call s:expect(getline('.')).to_equal('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaa')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBB')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aa')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words ')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Word')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORD')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TW')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-word')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Word')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Word')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORD')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TW')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_word')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWord')
+      call s:dotrepeat('twowords TWOWORDS twoWords Tw')
+      call s:dotrepeat('twowords TWOWORDS twoWord')
+      call s:dotrepeat('twowords TWOWORDS tw')
+      call s:dotrepeat('twowords TWOWORD')
+      call s:dotrepeat('twoword')
+      " previous line
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1')
+      " delete 2 words and repeat
+      execute "normal d2\<Plug>(craftyjump-wiw-ge)"
+      call s:expect(getline('.')).to_equal('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaa')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aa')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words ')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TW')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TW')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords Tw')
+      call s:dotrepeat('twowords TWOWORDS tw')
+      call s:dotrepeat('twoword')
+    End
+  End
+  Context c{motion} - change words
+    " after exiting insert mode, the cursor position shifts one to the left
+    It 'cw' (special case `WORD`)
+      normal! gg0
+      " change a word in a word and repeat
+      execute "normal c\<Plug>(craftyjump-wiw-w)\<Esc>"
+      call s:expect(getline('.')).to_equal(' TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('BBBBBaaa1aa1a')
+      call s:dotrepeat('Baaa1aa1a')
+      call s:dotrepeat('aa1a')
+      call s:dotrepeat('a')
+      " next line
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      " change 2 words in a word and repeat
+      execute "normal c2\<Plug>(craftyjump-wiw-w)\<Esc>"
+      call s:expect(getline('.')).to_equal(' twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('BBBBBaaa1aa1a')
+      call s:dotrepeat('aa1a')
+    End
+    It 'cb' (exclusive)
+      normal! G$
+      " change a word in a word and repeat
+      execute "normal c\<Plug>(craftyjump-wiw-b)\<Esc>"
+      call s:expect(getline('.')).to_equal('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two- 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO- - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two- - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords Two _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords o _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS two o _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS o o _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords  o o _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('  o o _ _ _ _ - - - 11aB1a')
+      " previous line
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1  o o _ _ _ _ - - - 11aB1a')
+      " change 2 words and repeat
+      execute "normal c2\<Plug>(craftyjump-wiw-b)\<Esc>"
+      call s:expect(getline('.')).to_equal('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBB1  o o _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1B1  o o _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words 1B1  o o _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS  1B1  o o _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words   1B1  o o _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words    1B1  o o _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words     1B1  o o _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS      1B1  o o _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words       1B1  o o _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords        1B1  o o _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords         1B1  o o _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('twowords TWOWORDS          1B1  o o _ _ _ _ - - - 11aB1a')
+      call s:dotrepeat('          1B1  o o _ _ _ _ - - - 11aB1a')
+    End
+    It 'ce' (inclusive)
+      normal! gg0
+      " change a word in a word and repeat
+      execute "normal c\<Plug>(craftyjump-wiw-e)\<Esc>"
+      call s:expect(getline('.')).to_equal(' TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat(' a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('BBBBBaaa1aa1a')
+      call s:dotrepeat('Baaa1aa1a')
+      call s:dotrepeat('1aa1a')
+      call s:dotrepeat('1a')
+      call s:dotrepeat('')
+      " next line
+      call s:dotrepeat(' TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      " change 2 words in a word and repeat
+      execute "normal c2\<Plug>(craftyjump-wiw-e)\<Esc>"
+      call s:expect(getline('.')).to_equal('Words TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('Words two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('-Words a1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('1aa1aaaBBBBBaaa1aa1a')
+      call s:dotrepeat('BBBBBaaa1aa1a')
+      call s:dotrepeat('1aa1a')
+      call s:dotrepeat('')
+    End
+    It 'cge' (inclusive)
+      normal! G$
+      " change a word in a word and repeat
+      execute "normal c\<Plug>(craftyjump-wiw-ge)\<Esc>"
+      call s:expect(getline('.')).to_equal('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaa')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBB')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aa')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1a')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words ')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Word')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORD')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TW')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-word')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Word')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Word')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORD')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TW')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_word')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWord')
+      call s:dotrepeat('twowords TWOWORDS twoWords Tw')
+      call s:dotrepeat('twowords TWOWORDS twoWord')
+      call s:dotrepeat('twowords TWOWORDS tw')
+      call s:dotrepeat('twowords TWOWORD')
+      call s:dotrepeat('twoword')
+      " previous line
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaaa1aa1')
+      " change 2 words and repeat
+      execute "normal d2\<Plug>(craftyjump-wiw-ge)\<Esc>"
+      call s:expect(getline('.')).to_equal('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aaaBBBBBaa')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words a1aa1aa')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Two-Words ')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TWO-WORDS Tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words two-words TW')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Two_Words tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS two_Words Tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TWO_WORDS tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords two_words TW')
+      call s:dotrepeat('twowords TWOWORDS twoWords TwoWords tw')
+      call s:dotrepeat('twowords TWOWORDS twoWords Tw')
+      call s:dotrepeat('twowords TWOWORDS tw')
+      call s:dotrepeat('twoword')
+    End
+  End
+End
+
+End
