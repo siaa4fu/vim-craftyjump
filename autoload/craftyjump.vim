@@ -6,6 +6,24 @@ scriptencoding utf-8
 # (therefore, both single-byte and multi-byte characters are supported)
 # e.g., '12345'[1:3] is '234' (indices is inclusive)
 
+def IsCharUnderCursor(regexp: string, pos: list<number>, line = getline(pos[1])): bool # {{{
+  # @param {string} regexp - regexp to check if the character under the cursor matches
+  # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
+  # @param {string=} line - the line of the cursor position
+  # @return {bool} - whether the character under the cursor is a keyword character
+  return line[pos[2] - 1] =~# regexp
+enddef # }}}
+def IsExclusiveSelEnd(pos: list<number>): bool # {{{
+  # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
+  # @return {bool} - whether the cursor is the end of the exclusive selection
+  if &selection ==# 'exclusive' && mode() =~# "[vV\<C-v>]"
+    # return true if the cursor is the end of the selection, not the start
+    const vpos = getcharpos('v')
+    return vpos[1] == pos[1] && vpos[2] < pos[2] || vpos[1] < pos[1]
+  endif
+  return v:false
+enddef # }}}
+
 def IsForwardMotion(motion: string): bool # {{{
   # @param {'w' | 'b' | 'e' | 'ge'} motion
   # @return {bool} - return true if the motion is forward, or false if backward
@@ -32,13 +50,22 @@ def DoSingleMotion(motion: string): bool # {{{
   endif
   return isMoved
 enddef # }}}
-def IsCharUnderCursor(regexp: string, pos: list<number>, line = getline(pos[1])): bool # {{{
-  # @param {string} regexp - regexp to check if the character under the cursor matches
-  # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
-  # @param {string=} line - the line of the cursor position
-  # @return {bool} - whether the character under the cursor is a keyword character
-  return line[pos[2] - 1] =~# regexp
+def DoSpecialMotion(motion: string, prevpos: list<number>) # {{{
+  # @param {string} motion
+  # @param {list<number>} prevpos - the cursor position before moving returned by getcursorcharpos()
+  # treat 'cw' like 'ce' if the cursor has moved from a non-blank character (`WORD`)
+  if v:operator ==# 'c' && motion ==# 'w' && IsCharUnderCursor('\S', prevpos)
+    # if the character before the cursor ends with a whitespace, move backward to a non-blank character
+    const pos = getcursorcharpos()
+    if pos[2] > 1
+      # get characters that the cursor has passed through while moving, but only on the cursor line
+      const passedChars = getline(pos[1])[(prevpos[1] == pos[1] ? prevpos[2] - 1 : 0) : pos[2] - 2]
+      const offsetToLeft = strcharlen(matchstr(passedChars, '\s\+\%(\S\&[^[:keyword:]]\)*$'))
+      if offsetToLeft > 0 | execute 'normal!' offsetToLeft .. 'h' | endif
+    endif
+  endif
 enddef # }}}
+
 def IsAtLineEnd(pos: list<number>, line = getline(pos[1]), isExSelEnd = IsExclusiveSelEnd(pos)): bool # {{{
   # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
   # @param {string=} line - the line of the cursor position
@@ -54,17 +81,6 @@ def IsAtLineStart(pos: list<number>, line = getline(pos[1]), ..._): bool # {{{
   # return true if the characters to the left of the cursor are whitespaces only
   return (pos[2] == 1 ? '' : line[0 : pos[2] - 2]) =~# '^\s*$'
 enddef # }}}
-def IsExclusiveSelEnd(pos: list<number>): bool # {{{
-  # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
-  # @return {bool} - whether the cursor is the end of the exclusive selection
-  if &selection ==# 'exclusive' && mode() =~# "[vV\<C-v>]"
-    # return true if the cursor is the end of the selection, not the start
-    const vpos = getcharpos('v')
-    return vpos[1] == pos[1] && vpos[2] < pos[2] || vpos[1] < pos[1]
-  endif
-  return v:false
-enddef # }}}
-
 def MoveToKwdChar(motion: string): bool # {{{
   # @param {'w' | 'b' | 'e' | 'ge'} motion
   # @return {bool} - whether the cursor has moved to a keyword character
@@ -138,17 +154,7 @@ export def Word(motion: string)
         isMoved = MoveToKwdChar(motion)
         if ! isMoved | break | endif
       endfor
-      # treat 'cw' like 'ce' if the cursor has moved from a non-blank character (`WORD`)
-      if isMoved && v:operator ==# 'c' && motion ==# 'w' && IsCharUnderCursor('\S', prevpos)
-        # if the character before the cursor ends with a whitespace, move backward to a non-blank character
-        const pos = getcursorcharpos()
-        if pos[2] > 1
-          # get characters that the cursor has passed through while moving, but only on the cursor line
-          const passedChars = getline(pos[1])[(prevpos[1] == pos[1] ? prevpos[2] - 1 : 0) : pos[2] - 2]
-          const leftoffset = strcharlen(matchstr(passedChars, '\s\+\%(\S\&[^[:keyword:]]\)*$'))
-          if leftoffset > 0 | execute 'normal!' leftoffset .. 'h' | endif
-        endif
-      endif
+      if isMoved | DoSpecialMotion(motion, prevpos) | endif
     finally
       timer_start(100, (_) => {
         &selection = sel
@@ -214,17 +220,7 @@ export def WordInWord(motion: string)
         isMoved = MoveToCharInWord(motion)
         if ! isMoved | break | endif
       endfor
-      # treat 'cw' like 'ce' if the cursor has moved from a non-blank character (`WORD`)
-      if isMoved && v:operator ==# 'c' && motion ==# 'w' && IsCharUnderCursor('\S', prevpos)
-        # if the character before the cursor ends with a whitespace, move backward to a non-blank character
-        const pos = getcursorcharpos()
-        if pos[2] > 1
-          # get characters that the cursor has passed through while moving, but only on the cursor line
-          const passedChars = getline(pos[1])[(prevpos[1] == pos[1] ? prevpos[2] - 1 : 0) : pos[2] - 2]
-          const leftoffset = strcharlen(matchstr(passedChars, '\s\+\%(\S\&[^[:keyword:]]\)*$'))
-          if leftoffset > 0 | execute 'normal!' leftoffset .. 'h' | endif
-        endif
-      endif
+      if isMoved | DoSpecialMotion(motion, prevpos) | endif
     finally
       timer_start(100, (_) => {
         &selection = sel
