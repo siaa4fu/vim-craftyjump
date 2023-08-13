@@ -66,18 +66,18 @@ def DoSpecialMotion(motion: string, prevpos: list<number>) # {{{
   endif
 enddef # }}}
 
-def IsAtLineEnd(pos: list<number>, line = getline(pos[1]), isExSelEnd = IsExclusiveSelEnd(pos)): bool # {{{
+def IsAfterLineEnd(pos: list<number>, line = getline(pos[1]), isExSelEnd = IsExclusiveSelEnd(pos)): bool # {{{
   # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
   # @param {string=} line - the line of the cursor position
   # @param {bool=} isExSelEnd - whether the cursor is the end of the exclusive selection
-  # @return {bool} - whether the cursor is at the end of the line
+  # @return {bool} - whether the cursor is on or after the end of the line
   # return true if the characters to the right of the cursor are whitespaces only
   return line[pos[2] - (isExSelEnd ? 1 : 0) :] =~# '^\s*$'
 enddef # }}}
-def IsAtLineStart(pos: list<number>, line = getline(pos[1]), ..._): bool # {{{
+def IsBeforeLineStart(pos: list<number>, line = getline(pos[1]), ..._): bool # {{{
   # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
   # @param {string=} line - the line of the cursor position
-  # @return {bool} - whether the cursor is at the start of the line
+  # @return {bool} - whether the cursor is on or before the start of the line
   # return true if the characters to the left of the cursor are whitespaces only
   return (pos[2] == 1 ? '' : line[0 : pos[2] - 2]) =~# '^\s*$'
 enddef # }}}
@@ -86,7 +86,7 @@ def MoveToKwdChar(motion: string): bool # {{{
   # @return {bool} - whether the cursor has moved to a keyword character
   const isForward = IsForwardMotion(motion)
   const bufferEdge = isForward ? [line('$'), charcol('$')] : [1, 1]
-  const IsAtLineEdge = isForward ? IsAtLineEnd : IsAtLineStart
+  const IsOutsideLineEdge = isForward ? IsAfterLineEnd : IsBeforeLineStart
   var isMoved: bool
   final prev = {}
   prev.pos = getcursorcharpos() # [0, lnum, charcol, off, curswant]
@@ -103,7 +103,7 @@ def MoveToKwdChar(motion: string): bool # {{{
     const line = getline(pos[1])
     const isExSelEnd = IsExclusiveSelEnd(pos)
     if prev.pos[1] != pos[1] || pos[1 : 2] == bufferEdge
-      if IsAtLineEdge(prev.pos, prev.line, prev.isExSelEnd)
+      if IsOutsideLineEdge(prev.pos, prev.line, prev.isExSelEnd)
         # when the cursor moves from the edge of the line to another line
         if line =~# '^\s*$'
           # skip blank lines
@@ -122,7 +122,7 @@ def MoveToKwdChar(motion: string): bool # {{{
     # the motion 'e' shifts one to the right at the end of the exclusive selection, so fix to the original position
     if motion ==# 'e' && isExSelEnd | pos[2] -= 1 | endif
     # when the cursor moved within the same line or from the edge of the line
-    if IsCharUnderCursor('\k', pos, line) || IsAtLineEdge(pos, line, isExSelEnd)
+    if IsCharUnderCursor('\k', pos, line) || IsOutsideLineEdge(pos, line, isExSelEnd)
       # stop moving if the character under the cursor was a keyword character
       # or the cursor moved to a non-keyword character at the edge of the line
       break
