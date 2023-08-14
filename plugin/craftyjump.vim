@@ -37,3 +37,13 @@ inoremap <Plug>(craftyjump-wiw-w)  <Cmd>call craftyjump#WordInWord('w')<CR>
 inoremap <Plug>(craftyjump-wiw-b)  <Cmd>call craftyjump#WordInWord('b')<CR>
 inoremap <Plug>(craftyjump-wiw-e)  <Cmd>call craftyjump#WordInWord('e')<CR>
 inoremap <Plug>(craftyjump-wiw-ge) <Cmd>call craftyjump#WordInWord('ge')<CR>
+
+" left-right-motions
+nnoremap <Plug>(craftyjump-home) <Cmd>call craftyjump#Home()<CR>
+nnoremap <Plug>(craftyjump-end)  <Cmd>call craftyjump#End()<CR>
+xnoremap <Plug>(craftyjump-home) <Cmd>call craftyjump#Home()<CR>
+xnoremap <Plug>(craftyjump-end)  <Cmd>call craftyjump#End()<CR>
+onoremap <Plug>(craftyjump-home) <Cmd>call craftyjump#Home()<CR>
+onoremap <Plug>(craftyjump-end)  <Cmd>call craftyjump#End()<CR>
+inoremap <Plug>(craftyjump-home) <Cmd>call craftyjump#Home()<CR>
+inoremap <Plug>(craftyjump-end)  <Cmd>call craftyjump#End()<CR>

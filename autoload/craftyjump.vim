@@ -38,11 +38,12 @@ def IsForwardMotion(motion: string): bool # {{{
   return isForward
 enddef # }}}
 def DoSingleMotion(motion: string): bool # {{{
-  # @param {'w' | 'b' | 'e' | 'ge' | '^' | 'g_'} motion
+  # @param {'w' | 'b' | 'e' | 'ge' | '^' | 'g_' | '0' | 'hg0' | '$' | 'lg$' } motion
   # @return {bool} - whether the motion has been executed
   var isMoved: bool
   if motion ==# 'w' || motion ==# 'b' || motion ==# 'e' || motion ==# 'ge'
       || motion ==# '^' || motion ==# 'g_'
+      || motion ==# '0' || motion ==# 'hg0' || motion ==# '$' || motion ==# 'lg$'
     execute 'normal!' motion
     isMoved = v:true
   else
@@ -230,6 +231,135 @@ export def WordInWord(motion: string)
     # move the cursor in any mode except operator-pending mode
     for i in range(cnt)
       const isMoved = MoveToCharInWord(motion)
+      if ! isMoved | break | endif
+    endfor
+  endif
+enddef
+
+def MoveToFirstChar(): bool # {{{
+  # @return {bool} - whether the cursor has moved to first characters
+  var isMoved: bool
+  final cols = {}
+  cols.cursor = charcol('.')
+  cols.start = 1
+  cols.firstNonBlank = cols.start + strcharlen(matchstr(getline('.'), '^\s*'))
+  if &wrap
+    # the cursor moves sequentially to 'g0' positions, which are first or leftmost characters of the current screen line,
+    # then cycles through the '^' and '0' positions
+    if cols.firstNonBlank < cols.cursor
+      isMoved = DoSingleMotion('hg0')
+      if charcol('.') <= cols.firstNonBlank
+        isMoved = DoSingleMotion('^')
+      endif
+    elseif cols.start < cols.cursor
+      isMoved = DoSingleMotion('hg0')
+      if charcol('.') <= cols.start
+        isMoved = DoSingleMotion('0')
+      endif
+    else
+      isMoved = DoSingleMotion('^')
+    endif
+  else
+    # the cursor cycles through the '^' and '0' positions
+    if cols.firstNonBlank < cols.cursor
+      isMoved = DoSingleMotion('^')
+    elseif cols.start < cols.cursor
+      isMoved = DoSingleMotion('0')
+    else
+      isMoved = DoSingleMotion('^')
+    endif
+  endif
+  return isMoved
+enddef # }}}
+def MoveToLastChar(): bool # {{{
+  # @return {bool} - whether the cursor has moved to last characters
+  var isMoved: bool
+  final cols = {}
+  cols.cursor = charcol('.')
+  cols.end = charcol('$') - 1
+  cols.lastNonBlank = cols.end - strcharlen(matchstr(getline('.'), '\s*$'))
+  if &wrap
+    # the cursor moves sequentially to 'g$' positions, which are last or rightmost characters of the current screen line,
+    # then cycles through the 'g_' and '$' positions
+    if cols.cursor < cols.lastNonBlank
+      isMoved = DoSingleMotion('lg$')
+      if cols.lastNonBlank <= charcol('.')
+        isMoved = DoSingleMotion('g_')
+      endif
+    elseif cols.cursor < cols.end
+      isMoved = DoSingleMotion('lg$')
+      if cols.end <= charcol('.')
+        isMoved = DoSingleMotion('$')
+      endif
+    else
+      isMoved = DoSingleMotion('g_')
+    endif
+  else
+    # the cursor cycles through the 'g_' and '$' positions
+    if cols.cursor < cols.lastNonBlank
+      isMoved = DoSingleMotion('g_')
+    elseif cols.cursor < cols.end
+      isMoved = DoSingleMotion('$')
+    else
+      isMoved = DoSingleMotion('g_')
+    endif
+  endif
+  return isMoved
+enddef # }}}
+export def Home()
+  const cnt = v:count1
+  const mode = mode(v:true)
+  if mode =~# '^no'
+    # set the operator to be linewise, characterwise or blockwise (`forced-motion`)
+    execute 'normal!' (mode[2] ?? 'v')
+    # temporarily override &selection, then restore it after the operator is done
+    const sel = &selection
+    try
+      &selection = 'exclusive'
+      var isMoved: bool
+      for i in range(cnt)
+        isMoved = MoveToFirstChar()
+        if ! isMoved | break | endif
+      endfor
+    finally
+      timer_start(100, (_) => {
+        &selection = sel
+      })
+    endtry
+  else
+    # move the cursor in any mode except operator-pending mode
+    for i in range(cnt)
+      const isMoved = MoveToFirstChar()
+      if ! isMoved | break | endif
+    endfor
+  endif
+enddef
+export def End()
+  const cnt = v:count1
+  const mode = mode(v:true)
+  if mode =~# '^no'
+    # set the operator to be linewise, characterwise or blockwise (`forced-motion`)
+    execute 'normal!' (mode[2] ?? 'v')
+    # temporarily override &selection, then restore it after the operator is done
+    const sel = &selection
+    try
+      &selection = 'inclusive'
+      var isMoved: bool
+      # const prevpos = getcursorcharpos()
+      for i in range(cnt)
+        isMoved = MoveToLastChar()
+        if ! isMoved | break | endif
+      endfor
+      # if isMoved | DoSpecialMotion(motion, prevpos) | endif
+    finally
+      timer_start(100, (_) => {
+        &selection = sel
+      })
+    endtry
+  else
+    # move the cursor in any mode except operator-pending mode
+    for i in range(cnt)
+      const isMoved = MoveToLastChar()
       if ! isMoved | break | endif
     endfor
   endif
