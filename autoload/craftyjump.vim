@@ -66,6 +66,36 @@ def DoSpecialMotion(motion: string, prevpos: list<number>) # {{{
     endif
   endif
 enddef # }}}
+def DoMotion(isExMotion: bool, Move: func(): bool, SpecialMove: func(list<number>) = null_function) # {{{
+  # @param {bool} isExMotion - the motion becomes exclusive if true, inclusive if false
+  # @param {func(): bool} Move - the function that moves the cursor
+  # @param {func(list<number>)=} SpecialMove
+  #   the function that adjusts the cursor position after moving in operator-pending mode
+  #   this is called with one argument:
+  #     @param {list<number>} - the cursor position before moving returned by getcursorcharpos()
+  const mode = mode(v:true)
+  if mode =~# '^no'
+    # set the operator to be linewise, characterwise or blockwise (`forced-motion`)
+    execute 'normal!' (mode[2] ?? 'v')
+    # temporarily override &selection, then restore it after the operator is done
+    const sel = &selection
+    try
+      &selection = isExMotion ? 'exclusive' : 'inclusive'
+      const posBeforeMoving = getcursorcharpos()
+      const isMoved = Move()
+      if isMoved && SpecialMove != null_function
+        SpecialMove(posBeforeMoving)
+      endif
+    finally
+      timer_start(100, (_) => {
+        &selection = sel
+      })
+    endtry
+  else
+    # move the cursor in any mode except operator-pending mode
+    const isMoved = Move()
+  endif
+enddef # }}}
 
 def IsAfterLineEnd(pos: list<number>, line = getline(pos[1]), isExSelEnd = IsExclusiveSelEnd(pos)): bool # {{{
   # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
@@ -137,37 +167,22 @@ enddef # }}}
 export def Word(motion: string)
   # @param {'w' | 'b' | 'e' | 'ge'} motion
   const cnt = v:count1
-  const mode = mode(v:true)
-  if mode =~# '^no'
-    # set the operator to be linewise, characterwise or blockwise (`forced-motion`)
-    execute 'normal!' (mode[2] ?? 'v')
-    # temporarily override &selection, then restore it after the operator is done
-    const sel = &selection
-    try
-      if motion ==# 'w' || motion ==# 'b'
-        &selection = 'exclusive'
-      elseif motion ==# 'e' || motion ==# 'ge'
-        &selection = 'inclusive'
-      endif
+  var isExMotion: bool
+  if motion ==# 'w' || motion ==# 'b'
+    isExMotion = v:true
+  elseif motion ==# 'e' || motion ==# 'ge'
+    isExMotion = v:false
+  endif
+  DoMotion(isExMotion,
+    () => {
       var isMoved: bool
-      const prevpos = getcursorcharpos()
       for i in range(cnt)
         isMoved = MoveToKwdChar(motion)
         if ! isMoved | break | endif
       endfor
-      if isMoved | DoSpecialMotion(motion, prevpos) | endif
-    finally
-      timer_start(100, (_) => {
-        &selection = sel
-      })
-    endtry
-  else
-    # move the cursor in any mode except operator-pending mode
-    for i in range(cnt)
-      const isMoved = MoveToKwdChar(motion)
-      if ! isMoved | break | endif
-    endfor
-  endif
+      return isMoved
+    },
+    function(DoSpecialMotion, [motion]))
 enddef
 
 def MoveToCharInWord(motion: string): bool # {{{
@@ -188,8 +203,6 @@ def MoveToCharInWord(motion: string): bool # {{{
     #   uppercase before uppercase and lowercase
     #   alphabet before non-alphabet
     pat = '.\>\|\l\u\|\u\u\l\|\a\A'
-  else
-    echoerr 'Unsupported motion:' motion
   endif
   const isMoved = search(pat, isForward ? 'W' : 'bW') > 0
   if isMoved
@@ -203,37 +216,22 @@ enddef # }}}
 export def WordInWord(motion: string)
   # @param {'w' | 'b' | 'e' | 'ge'} motion
   const cnt = v:count1
-  const mode = mode(v:true)
-  if mode =~# '^no'
-    # set the operator to be linewise, characterwise or blockwise (`forced-motion`)
-    execute 'normal!' (mode[2] ?? 'v')
-    # temporarily override &selection, then restore it after the operator is done
-    const sel = &selection
-    try
-      if motion ==# 'w' || motion ==# 'b'
-        &selection = 'exclusive'
-      elseif motion ==# 'e' || motion ==# 'ge'
-        &selection = 'inclusive'
-      endif
+  var isExMotion: bool
+  if motion ==# 'w' || motion ==# 'b'
+    isExMotion = v:true
+  elseif motion ==# 'e' || motion ==# 'ge'
+    isExMotion = v:false
+  endif
+  DoMotion(isExMotion,
+    () => {
       var isMoved: bool
-      const prevpos = getcursorcharpos()
       for i in range(cnt)
         isMoved = MoveToCharInWord(motion)
         if ! isMoved | break | endif
       endfor
-      if isMoved | DoSpecialMotion(motion, prevpos) | endif
-    finally
-      timer_start(100, (_) => {
-        &selection = sel
-      })
-    endtry
-  else
-    # move the cursor in any mode except operator-pending mode
-    for i in range(cnt)
-      const isMoved = MoveToCharInWord(motion)
-      if ! isMoved | break | endif
-    endfor
-  endif
+      return isMoved
+    },
+    function(DoSpecialMotion, [motion]))
 enddef
 
 def MoveToFirstChar(): bool # {{{
@@ -306,61 +304,11 @@ def MoveToLastChar(): bool # {{{
   endif
   return isMoved
 enddef # }}}
-export def Home()
-  const cnt = v:count1
-  const mode = mode(v:true)
-  if mode =~# '^no'
-    # set the operator to be linewise, characterwise or blockwise (`forced-motion`)
-    execute 'normal!' (mode[2] ?? 'v')
-    # temporarily override &selection, then restore it after the operator is done
-    const sel = &selection
-    try
-      &selection = 'exclusive'
-      var isMoved: bool
-      for i in range(cnt)
-        isMoved = MoveToFirstChar()
-        if ! isMoved | break | endif
-      endfor
-    finally
-      timer_start(100, (_) => {
-        &selection = sel
-      })
-    endtry
-  else
-    # move the cursor in any mode except operator-pending mode
-    for i in range(cnt)
-      const isMoved = MoveToFirstChar()
-      if ! isMoved | break | endif
-    endfor
-  endif
-enddef
-export def End()
-  const cnt = v:count1
-  const mode = mode(v:true)
-  if mode =~# '^no'
-    # set the operator to be linewise, characterwise or blockwise (`forced-motion`)
-    execute 'normal!' (mode[2] ?? 'v')
-    # temporarily override &selection, then restore it after the operator is done
-    const sel = &selection
-    try
-      &selection = 'inclusive'
-      var isMoved: bool
-      # const prevpos = getcursorcharpos()
-      for i in range(cnt)
-        isMoved = MoveToLastChar()
-        if ! isMoved | break | endif
-      endfor
-      # if isMoved | DoSpecialMotion(motion, prevpos) | endif
-    finally
-      timer_start(100, (_) => {
-        &selection = sel
-      })
-    endtry
-  else
-    # move the cursor in any mode except operator-pending mode
-    for i in range(cnt)
-      const isMoved = MoveToLastChar()
-      if ! isMoved | break | endif
-    endfor
+export def LeftRight(motion: string)
+  # @param {'home' | 'end'} motion
+  if motion ==# 'home'
+    DoMotion(v:true, MoveToFirstChar)
+  elseif motion ==# 'end'
+    DoMotion(v:false, MoveToLastChar)
   endif
 enddef
