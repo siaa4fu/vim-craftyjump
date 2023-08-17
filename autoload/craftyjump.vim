@@ -83,13 +83,15 @@ def DoSpecialMotion(motion: string, prevpos: list<number>) # {{{
     endif
   endif
 enddef # }}}
-def DoMotion(isExMotion: bool, Move: func(): bool, SpecialMove: func(list<number>) = null_function) # {{{
-  # @param {bool} isExMotion - execute the motion as exclusive if true, inclusive if false
-  # @param {func(): bool} Move - the function that moves the cursor treated as the motion
+def DoMotion(motion: string, Move: func(number): bool, SpecialMove: func(list<number>) = null_function) # {{{
+  # @param {string} motion - treat the movement like specified motion
+  # @param {func(number): bool} Move
+  #   the function that moves the cursor
+  #     @param {number} - v:count1
   # @param {func(list<number>)=} SpecialMove
   #   the function that adjusts the cursor position after moving in operator-pending mode
-  #   this is called with one argument:
   #     @param {list<number>} - the cursor position before moving returned by getcursorcharpos()
+  const cnt = v:count1
   const mode = mode(v:true)
   if mode =~# '^no'
     # set the operator to be linewise, characterwise or blockwise (`forced-motion`)
@@ -97,9 +99,9 @@ def DoMotion(isExMotion: bool, Move: func(): bool, SpecialMove: func(list<number
     # temporarily override &selection, then restore it after the operator is done
     const sel = &selection
     try
-      &selection = isExMotion ? 'exclusive' : 'inclusive'
+      &selection = IsExclusiveMotion(motion) ? 'exclusive' : 'inclusive'
       const posBeforeMoving = getcursorcharpos()
-      const isMoved = Move()
+      const isMoved = Move(cnt)
       if isMoved && SpecialMove != null_function
         SpecialMove(posBeforeMoving)
       endif
@@ -110,7 +112,7 @@ def DoMotion(isExMotion: bool, Move: func(): bool, SpecialMove: func(list<number
     endtry
   else
     # move the cursor in any mode except operator-pending mode
-    const isMoved = Move()
+    const isMoved = Move(cnt)
   endif
 enddef # }}}
 
@@ -129,75 +131,72 @@ def IsBeforeLineStart(pos: list<number>, line = getline(pos[1]), ..._): bool # {
   # return true if the characters to the left of the cursor are whitespaces only
   return (pos[2] == 1 ? '' : line[0 : pos[2] - 2]) =~# '^\s*$'
 enddef # }}}
-def MoveToKwdChar(motion: string): bool # {{{
+def MoveToKwdChar(motion: string, cnt: number): bool # {{{
   # @param {'w' | 'b' | 'e' | 'ge'} motion
+  # @param {number} cnt - v:count1
   # @return {bool} - whether the cursor has moved to a keyword character
   const isForward = IsForwardMotion(motion)
   const bufferEdge = isForward ? [line('$'), charcol('$')] : [1, 1]
   const IsOutsideLineEdge = isForward ? IsAfterLineEnd : IsBeforeLineStart
   var isMoved: bool
-  final prev = {}
-  prev.pos = getcursorcharpos() # [0, lnum, charcol, off, curswant]
-  prev.line = getline(prev.pos[1])
-  prev.isExSelEnd = IsExclusiveSelEnd(prev.pos)
-  while v:true
-    isMoved = DoSingleMotion(motion)
-    final pos = getcursorcharpos()
-    if prev.pos == pos
-      # abort if the cursor could not move
-      isMoved = v:false
-      break
-    endif
-    const line = getline(pos[1])
-    const isExSelEnd = IsExclusiveSelEnd(pos)
-    if prev.pos[1] != pos[1] || pos[1 : 2] == bufferEdge
-      if IsOutsideLineEdge(prev.pos, prev.line, prev.isExSelEnd)
-        # when the cursor moves from the edge of the line to another line
-        if line =~# '^\s*$'
-          # skip blank lines
-          prev.pos = pos
-          prev.line = line
-          prev.isExSelEnd = isExSelEnd
-          continue
-        endif
-      else
-        # move the cursor to the edge of the line
-        setcharpos('.', prev.pos)
-        isMoved = DoSingleMotion(isForward ? 'g_' : '^')
+  for i in range(cnt)
+    final prev = {}
+    prev.pos = getcursorcharpos() # [0, lnum, charcol, off, curswant]
+    prev.line = getline(prev.pos[1])
+    prev.isExSelEnd = IsExclusiveSelEnd(prev.pos)
+    while v:true
+      isMoved = DoSingleMotion(motion)
+      final pos = getcursorcharpos()
+      if prev.pos == pos
+        # abort if the cursor could not move
+        isMoved = v:false
         break
       endif
-    endif
-    # the motion 'e' shifts one to the right at the end of the exclusive selection, so fix to the original position
-    if motion ==# 'e' && isExSelEnd | pos[2] -= 1 | endif
-    # when the cursor moved within the same line or from the edge of the line
-    if IsCharUnderCursor('\k', pos, line) || IsOutsideLineEdge(pos, line, isExSelEnd)
-      # stop moving if the character under the cursor was a keyword character
-      # or the cursor moved to a non-keyword character at the edge of the line
-      break
-    endif
-    prev.pos = pos
-    prev.line = line
-    prev.isExSelEnd = isExSelEnd
-  endwhile
+      const line = getline(pos[1])
+      const isExSelEnd = IsExclusiveSelEnd(pos)
+      if prev.pos[1] != pos[1] || pos[1 : 2] == bufferEdge
+        if IsOutsideLineEdge(prev.pos, prev.line, prev.isExSelEnd)
+          # when the cursor moves from the edge of the line to another line
+          if line =~# '^\s*$'
+            # skip blank lines
+            prev.pos = pos
+            prev.line = line
+            prev.isExSelEnd = isExSelEnd
+            continue
+          endif
+        else
+          # move the cursor to the edge of the line
+          setcharpos('.', prev.pos)
+          isMoved = DoSingleMotion(isForward ? 'g_' : '^')
+          break
+        endif
+      endif
+      # the motion 'e' shifts one to the right at the end of the exclusive selection, so fix to the original position
+      if motion ==# 'e' && isExSelEnd | pos[2] -= 1 | endif
+      # when the cursor moved within the same line or from the edge of the line
+      if IsCharUnderCursor('\k', pos, line) || IsOutsideLineEdge(pos, line, isExSelEnd)
+        # stop moving if the character under the cursor was a keyword character
+        # or the cursor moved to a non-keyword character at the edge of the line
+        break
+      endif
+      prev.pos = pos
+      prev.line = line
+      prev.isExSelEnd = isExSelEnd
+    endwhile
+    if ! isMoved | break | endif
+  endfor
   return isMoved
 enddef # }}}
 export def Word(motion: string)
   # @param {'w' | 'b' | 'e' | 'ge'} motion
-  const cnt = v:count1
-  DoMotion(IsExclusiveMotion(motion),
-    () => {
-      var isMoved: bool
-      for i in range(cnt)
-        isMoved = MoveToKwdChar(motion)
-        if ! isMoved | break | endif
-      endfor
-      return isMoved
-    },
+  DoMotion(motion,
+    function(MoveToKwdChar, [motion]),
     function(DoSpecialMotion, [motion]))
 enddef
 
-def MoveToCharInWord(motion: string): bool # {{{
+def MoveToCharInWord(motion: string, cnt: number): bool # {{{
   # @param {'w' | 'b' | 'e' | 'ge'} motion
+  # @param {number} cnt - v:count1
   # @return {bool} - whether the cursor has moved to a word in a word (wiw)
   const isForward = IsForwardMotion(motion)
   var pat: string
@@ -215,31 +214,29 @@ def MoveToCharInWord(motion: string): bool # {{{
     #   alphabet before non-alphabet
     pat = '.\>\|\l\u\|\u\u\l\|\a\A'
   endif
-  const isMoved = search(pat, isForward ? 'W' : 'bW') > 0
-  if isMoved
-    const pos = getcursorcharpos()
-    const isExSelEnd = IsExclusiveSelEnd(pos)
-    # shift the motion 'e' one to the right at the end of the exclusive selection, like the word-motion 'e'
-    if motion ==# 'e' && isExSelEnd | execute 'normal! l' | endif
-  endif
+  var isMoved: bool
+  for i in range(cnt)
+    isMoved = search(pat, isForward ? 'W' : 'bW') > 0
+    if isMoved
+      const pos = getcursorcharpos()
+      const isExSelEnd = IsExclusiveSelEnd(pos)
+      # shift the motion 'e' one to the right at the end of the exclusive selection, like the word-motion 'e'
+      if motion ==# 'e' && isExSelEnd | execute 'normal! l' | endif
+    else
+      break
+    endif
+  endfor
   return isMoved
 enddef # }}}
 export def WordInWord(motion: string)
   # @param {'w' | 'b' | 'e' | 'ge'} motion
-  const cnt = v:count1
-  DoMotion(IsExclusiveMotion(motion),
-    () => {
-      var isMoved: bool
-      for i in range(cnt)
-        isMoved = MoveToCharInWord(motion)
-        if ! isMoved | break | endif
-      endfor
-      return isMoved
-    },
+  DoMotion(motion,
+    function(MoveToCharInWord, [motion]),
     function(DoSpecialMotion, [motion]))
 enddef
 
-def MoveToFirstChar(): bool # {{{
+def MoveToFirstChar(cnt: number): bool # {{{
+  # @param {number} cnt - v:count1
   # @return {bool} - whether the cursor has moved to first characters
   var isMoved: bool
   final cols = {}
@@ -274,7 +271,8 @@ def MoveToFirstChar(): bool # {{{
   endif
   return isMoved
 enddef # }}}
-def MoveToLastChar(): bool # {{{
+def MoveToLastChar(cnt: number): bool # {{{
+  # @param {number} cnt - v:count1
   # @return {bool} - whether the cursor has moved to last characters
   var isMoved: bool
   final cols = {}
@@ -311,11 +309,11 @@ def MoveToLastChar(): bool # {{{
 enddef # }}}
 export def LeftRight(motion: string)
   # @param {"\<home>" | "\<end>"} motion
-  var MoveToEdgeChar: func
+  var MoveToEdgeChar: func(number): bool
   if motion ==# "\<home>"
     MoveToEdgeChar = MoveToFirstChar
   elseif motion ==# "\<end>"
     MoveToEdgeChar = MoveToLastChar
   endif
-  DoMotion(IsExclusiveMotion(motion), MoveToEdgeChar)
+  DoMotion(motion, MoveToEdgeChar)
 enddef
