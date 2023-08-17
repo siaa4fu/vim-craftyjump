@@ -38,12 +38,16 @@ def IsForwardMotion(motion: string): bool # {{{
   return isForward
 enddef # }}}
 def IsExclusiveMotion(motion: string): bool # {{{
-  # @param {'w' | 'b' | 'e' | 'ge'} motion
+  # @param {'w' | 'b' | 'e' | 'ge' | "\<home>" | "\<end>"} motion
   # @return {bool} - return true if the motion is exclusive, or false if inclusive
   var isExMotion: bool
   if motion ==# 'w' || motion ==# 'b'
     isExMotion = v:true
   elseif motion ==# 'e' || motion ==# 'ge'
+    isExMotion = v:false
+  elseif motion ==# "\<home>"
+    isExMotion = v:true
+  elseif motion ==# "\<end>"
     isExMotion = v:false
   else
     echoerr 'Unsupported motion:' motion
@@ -306,10 +310,12 @@ def MoveToLastChar(): bool # {{{
   return isMoved
 enddef # }}}
 export def LeftRight(motion: string)
-  # @param {'home' | 'end'} motion
-  if motion ==# 'home'
-    DoMotion(v:true, MoveToFirstChar)
-  elseif motion ==# 'end'
-    DoMotion(v:false, MoveToLastChar)
+  # @param {"\<home>" | "\<end>"} motion
+  var MoveToEdgeChar: func
+  if motion ==# "\<home>"
+    MoveToEdgeChar = MoveToFirstChar
+  elseif motion ==# "\<end>"
+    MoveToEdgeChar = MoveToLastChar
   endif
+  DoMotion(IsExclusiveMotion(motion), MoveToEdgeChar)
 enddef

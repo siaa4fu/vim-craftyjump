@@ -39,11 +39,11 @@ inoremap <Plug>(craftyjump-wiw-e)  <Cmd>call craftyjump#WordInWord('e')<CR>
 inoremap <Plug>(craftyjump-wiw-ge) <Cmd>call craftyjump#WordInWord('ge')<CR>
 
 " left-right-motions
-nnoremap <Plug>(craftyjump-home) <Cmd>call craftyjump#LeftRight('home')<CR>
-nnoremap <Plug>(craftyjump-end)  <Cmd>call craftyjump#LeftRight('end')<CR>
-xnoremap <Plug>(craftyjump-home) <Cmd>call craftyjump#LeftRight('home')<CR>
-xnoremap <Plug>(craftyjump-end)  <Cmd>call craftyjump#LeftRight('end')<CR>
-onoremap <Plug>(craftyjump-home) <Cmd>call craftyjump#LeftRight('home')<CR>
-onoremap <Plug>(craftyjump-end)  <Cmd>call craftyjump#LeftRight('end')<CR>
-inoremap <Plug>(craftyjump-home) <Cmd>call craftyjump#LeftRight('home')<CR>
-inoremap <Plug>(craftyjump-end)  <Cmd>call craftyjump#LeftRight('end')<CR>
+nnoremap <Plug>(craftyjump-home) <Cmd>call craftyjump#LeftRight("\<home>")<CR>
+nnoremap <Plug>(craftyjump-end)  <Cmd>call craftyjump#LeftRight("\<end>")<CR>
+xnoremap <Plug>(craftyjump-home) <Cmd>call craftyjump#LeftRight("\<home>")<CR>
+xnoremap <Plug>(craftyjump-end)  <Cmd>call craftyjump#LeftRight("\<end>")<CR>
+onoremap <Plug>(craftyjump-home) <Cmd>call craftyjump#LeftRight("\<home>")<CR>
+onoremap <Plug>(craftyjump-end)  <Cmd>call craftyjump#LeftRight("\<end>")<CR>
+inoremap <Plug>(craftyjump-home) <Cmd>call craftyjump#LeftRight("\<home>")<CR>
+inoremap <Plug>(craftyjump-end)  <Cmd>call craftyjump#LeftRight("\<end>")<CR>
