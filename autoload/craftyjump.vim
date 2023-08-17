@@ -37,6 +37,19 @@ def IsForwardMotion(motion: string): bool # {{{
   endif
   return isForward
 enddef # }}}
+def IsExclusiveMotion(motion: string): bool # {{{
+  # @param {'w' | 'b' | 'e' | 'ge'} motion
+  # @return {bool} - return true if the motion is exclusive, or false if inclusive
+  var isExMotion: bool
+  if motion ==# 'w' || motion ==# 'b'
+    isExMotion = v:true
+  elseif motion ==# 'e' || motion ==# 'ge'
+    isExMotion = v:false
+  else
+    echoerr 'Unsupported motion:' motion
+  endif
+  return isExMotion
+enddef # }}}
 def DoSingleMotion(motion: string): bool # {{{
   # @param {'w' | 'b' | 'e' | 'ge' | '^' | 'g_' | '0' | 'hg0' | '$' | 'lg$' } motion
   # @return {bool} - whether the motion has been executed
@@ -67,8 +80,8 @@ def DoSpecialMotion(motion: string, prevpos: list<number>) # {{{
   endif
 enddef # }}}
 def DoMotion(isExMotion: bool, Move: func(): bool, SpecialMove: func(list<number>) = null_function) # {{{
-  # @param {bool} isExMotion - the motion becomes exclusive if true, inclusive if false
-  # @param {func(): bool} Move - the function that moves the cursor
+  # @param {bool} isExMotion - execute the motion as exclusive if true, inclusive if false
+  # @param {func(): bool} Move - the function that moves the cursor treated as the motion
   # @param {func(list<number>)=} SpecialMove
   #   the function that adjusts the cursor position after moving in operator-pending mode
   #   this is called with one argument:
@@ -167,13 +180,7 @@ enddef # }}}
 export def Word(motion: string)
   # @param {'w' | 'b' | 'e' | 'ge'} motion
   const cnt = v:count1
-  var isExMotion: bool
-  if motion ==# 'w' || motion ==# 'b'
-    isExMotion = v:true
-  elseif motion ==# 'e' || motion ==# 'ge'
-    isExMotion = v:false
-  endif
-  DoMotion(isExMotion,
+  DoMotion(IsExclusiveMotion(motion),
     () => {
       var isMoved: bool
       for i in range(cnt)
@@ -216,13 +223,7 @@ enddef # }}}
 export def WordInWord(motion: string)
   # @param {'w' | 'b' | 'e' | 'ge'} motion
   const cnt = v:count1
-  var isExMotion: bool
-  if motion ==# 'w' || motion ==# 'b'
-    isExMotion = v:true
-  elseif motion ==# 'e' || motion ==# 'ge'
-    isExMotion = v:false
-  endif
-  DoMotion(isExMotion,
+  DoMotion(IsExclusiveMotion(motion),
     () => {
       var isMoved: bool
       for i in range(cnt)
