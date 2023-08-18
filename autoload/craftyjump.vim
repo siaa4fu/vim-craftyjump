@@ -239,6 +239,11 @@ def MoveToFirstChar(cnt: number): bool # {{{
   # @param {number} cnt - v:count1
   # @return {bool} - whether the cursor has moved to first characters
   var isMoved: bool
+  if cnt > 1
+    # move to [count - 1] screen lines upward, then to the last character of the screen line
+    # ('g0' does not support [count], but it is considered possible to go lines upward)
+    execute 'normal!' (cnt - 1) .. 'gkg$'
+  endif
   final cols = {}
   cols.cursor = charcol('.')
   cols.start = 1
@@ -275,6 +280,10 @@ def MoveToLastChar(cnt: number): bool # {{{
   # @param {number} cnt - v:count1
   # @return {bool} - whether the cursor has moved to last characters
   var isMoved: bool
+  if cnt > 1
+    # move to [count - 1] screen lines downward like g$, then to the first character of the screen line
+    execute 'normal!' (cnt - 1) .. 'gjg0'
+  endif
   final cols = {}
   cols.cursor = charcol('.')
   cols.end = charcol('$') - 1
