@@ -6,18 +6,15 @@ let s:expect = themis#helper('expect')
 let s:samplelines = readfile('test/sample_for_word_motions')
 
 Context motions simply move the cursor
-  function! s:getKwdIndices(line, motion)
+  function! s:getIndices(line, motion, isForward)
     " @param {string} line
     " @param {'w' | 'b' | 'e' | 'ge'} motion
-    "   'w'  - get start positions of matches and return their indices
-    "   'b'  - get start positions of matches and return their indices reversed
-    "   'e'  - get end positions of matches and return their indices
-    "   'ge' - get end positions of matches and return their indices reversed
+    " @param {bool} isForward - return indices if the motion is forward, reversed indices if backward
     " @return {list<number>} - character indices of keyword characters
     let indices = []
-    let Put = function(a:motion ==# 'w' || a:motion ==# 'e' ? 'add' : 'insert', [indices])
+    let Put = function(a:isForward ? 'add' : 'insert', [indices])
     " partial support for word motions in Japanese (`word`)
-    let ptn_word = join([
+    let ptn = join([
           "\ letters, digits and underscores
           \  '\w\+',
           "\ Hiragana
@@ -27,18 +24,18 @@ Context motions simply move the cursor
           "\ other non-blank characters (including CJK Ideographs)
           \  '\%(\W\&[^\u3040-\u309f\u30a0-\u30ff]\&\k\)\+'
           \], '\|')
-    let pos = matchstrpos(a:line, ptn_word) " 0-based byte index
+    let pos = matchstrpos(a:line, ptn) " 0-based byte index
     if a:motion ==# 'w' || a:motion ==# 'b'
       while pos[0] !=# ''
         " matchstrpos(...)[1] gives the 0-based byte index of the starting position of the match
         call Put(charidx(a:line, pos[1]) + 1) " convert 0-based character index to 1-based character index
-        let pos = matchstrpos(a:line, ptn_word, pos[2])
+        let pos = matchstrpos(a:line, ptn, pos[2])
       endwhile
     else
       while pos[0] !=# ''
         " matchstrpos(...)[2] gives the 0-based byte index of the first character AFTER the match
         call Put(charidx(a:line, pos[2])) " equal to 1-based character index
-        let pos = matchstrpos(a:line, ptn_word, pos[2])
+        let pos = matchstrpos(a:line, ptn, pos[2])
       endwhile
     endif
     return indices
@@ -53,7 +50,7 @@ Context motions simply move the cursor
     let line = getline(a:lnum)
     " skip if the line is blank
     if line !=# ''
-      let indices = s:getKwdIndices(line, a:motion)
+      let indices = s:getIndices(line, a:motion, isForward)
       if a:motion ==# 'e' && a:isExSelEnd
         let indices = map(indices, {k, v -> v + 1})
       endif
