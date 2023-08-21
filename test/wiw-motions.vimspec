@@ -11,6 +11,10 @@ let s:samplelines = readfile('test/sample_for_wiw_motions')
 "       if not, to the signed position
 
 Context motions simply move the cursor
+  Before
+    " use line 1 to 3
+    call InitTestBuffer(s:samplelines[0 : 2])
+  End
   function! s:getIndices(line, motion, isForward, isExSelEnd)
     " @param {string} line
     " @param {'w' | 'b' | 'e' | 'ge'} motion
@@ -35,17 +39,13 @@ Context motions simply move the cursor
     " @param {bool} isInitialLine - skip the initial position even if it is a keyword character
     " @param {bool} isExSelEnd - whether the cursor is the end of the exclusive selection
     " @return {number} - next line number
-    let isForward = a:motion ==# 'w' || a:motion ==# 'e' ? 1 : 0
+    let isForward = a:motion ==# 'w' || a:motion ==# 'e'
     let line = getline(a:lnum)
     " skip if the line is blank
     if line !=# ''
       " get the line indicating where the cursor is expected to move corresponding to the current line
-      " positions of wiw-head start on line 5 or wiw-tail patterns on line 9
-      let positionline = s:samplelines[a:lnum + (a:motion ==# 'w' || a:motion ==# 'b' ? 4 : 8) - 1]
+      let positionline = s:samplelines[a:lnum + #{w: 4, b: 4, e: 8, ge: 12}[a:motion] - 1]
       let indices = s:getIndices(positionline, a:motion, isForward, a:isExSelEnd)
-      if a:motion ==# 'e' && a:isExSelEnd
-        let indices = map(indices, {k, v -> v + 1})
-      endif
       if isForward
         " skip the initial position
         if a:isInitialLine && get(indices, 0, -1) == 1 | let indices = indices[1 :] | endif
@@ -72,10 +72,6 @@ Context motions simply move the cursor
     endwhile
   enddef
   Context in normal mode
-    Before
-      " use line 1 to 3
-      call InitTestBuffer(s:samplelines[0 : 2])
-    End
     It moves forward using 'w' from the first line
       normal! gg0
       call s:moveWhole('w')
@@ -94,10 +90,6 @@ Context motions simply move the cursor
     End
   End
   Context in visual mode
-    Before
-      " use line 1 to 3
-      call InitTestBuffer(s:samplelines[0 : 2])
-    End
     Context [v] characterwise (inclusive)
       Before
         set selection=inclusive
