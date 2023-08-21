@@ -11,6 +11,10 @@ let s:samplelines = readfile('test/sample_for_leftright_motions')
 "       if not, to the signed position
 
 Context motions simply move the cursor
+  Before
+    " use line 1 to 3
+    call InitTestBuffer(s:samplelines[0 : 2])
+  End
   function! s:getIndices(line, motion, isForward, isExSelEnd)
     " @param {string} line
     " @param {'home' | 'end'} motion
@@ -40,8 +44,7 @@ Context motions simply move the cursor
     " skip if the line is blank
     if line !=# ''
       " get the line indicating where the cursor is expected to move corresponding to the current line
-      " positions of first characters start on line 5, ones of last characters starts on line 9
-      let positionline = s:samplelines[a:lnum + (a:motion ==# 'home' ? 4 : 8) - 1]
+      let positionline = s:samplelines[a:lnum + #{home: 4, end: 8}[a:motion] - 1]
       let indices = s:getIndices(positionline, a:motion, isForward, a:isExSelEnd)
       if isForward
         " skip the initial position
@@ -70,10 +73,6 @@ Context motions simply move the cursor
     endwhile
   enddef
   Context in normal mode
-    Before
-      " use line 1 to 3
-      call InitTestBuffer(s:samplelines[0 : 2])
-    End
     It moves backward using 'home' from the last line
       normal! G$
       call s:moveWhole('home')
@@ -84,10 +83,6 @@ Context motions simply move the cursor
     End
   End
   Context in visual mode
-    Before
-      " use line 1 to 3
-      call InitTestBuffer(s:samplelines[0 : 2])
-    End
     Context [v] characterwise (inclusive)
       Before
         set selection=inclusive
