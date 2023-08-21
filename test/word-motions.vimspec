@@ -4,40 +4,33 @@ Describe word-motions
 
 let s:expect = themis#helper('expect')
 let s:samplelines = readfile('test/sample_for_word_motions')
+" the signs in the sample text indicate types of cursor movements as follows
+"   # - the cursor normally goes to the signed position
+"   + - in visual mode, the cursor always goes to just after the signed position
+"   * - if the cursor is at the end of the exclusive selection, it goes to just after the signed position
+"       if not, to the signed position
 
 Context motions simply move the cursor
-  function! s:getIndices(line, motion, isForward)
+  Before
+    " use line 1 to 17
+    call InitTestBuffer(s:samplelines[0 : 16])
+  End
+  function! s:getIndices(line, motion, isForward, isExSelEnd)
     " @param {string} line
     " @param {'w' | 'b' | 'e' | 'ge'} motion
     " @param {bool} isForward - return indices if the motion is forward, reversed indices if backward
+    " @param {bool} isExSelEnd - whether the cursor is the end of the exclusive selection
     " @return {list<number>} - character indices of keyword characters
     let indices = []
     let Put = function(a:isForward ? 'add' : 'insert', [indices])
-    " partial support for word motions in Japanese (`word`)
-    let ptn = join([
-          "\ letters, digits and underscores
-          \  '\w\+',
-          "\ Hiragana
-          \  '[\u3040-\u309f]\+',
-          "\ Katakana
-          \  '[\u30a0-\u30ff]\+',
-          "\ other non-blank characters (including CJK Ideographs)
-          \  '\%(\W\&[^\u3040-\u309f\u30a0-\u30ff]\&\k\)\+'
-          \], '\|')
+    let ptn = '[#+*]'
+    let currenttype = mode() =~# "[vV\<C-v>]" ? a:isExSelEnd ? '*' : '+' : '#'
     let pos = matchstrpos(a:line, ptn) " 0-based byte index
-    if a:motion ==# 'w' || a:motion ==# 'b'
-      while pos[0] !=# ''
-        " matchstrpos(...)[1] gives the 0-based byte index of the starting position of the match
-        call Put(charidx(a:line, pos[1]) + 1) " convert 0-based character index to 1-based character index
-        let pos = matchstrpos(a:line, ptn, pos[2])
-      endwhile
-    else
-      while pos[0] !=# ''
-        " matchstrpos(...)[2] gives the 0-based byte index of the first character AFTER the match
-        call Put(charidx(a:line, pos[2])) " equal to 1-based character index
-        let pos = matchstrpos(a:line, ptn, pos[2])
-      endwhile
-    endif
+    while pos[0] !=# ''
+      " matchstrpos(...)[1] gives the 0-based byte index of the starting position of the match
+      call Put(charidx(a:line, pos[1]) + (pos[0] !=# '#' && pos[0] ==# currenttype ? 1 : 0) + 1) " convert 0-based character index to 1-based character index
+      let pos = matchstrpos(a:line, ptn, pos[2])
+    endwhile
     return indices
   endfunction
   function! s:moveInLine(lnum, motion, isInitialLine, isExSelEnd)
@@ -46,27 +39,19 @@ Context motions simply move the cursor
     " @param {bool} isInitialLine - skip the initial position even if it is a keyword character
     " @param {bool} isExSelEnd - whether the cursor is the end of the exclusive selection
     " @return {number} - next line number
-    let isForward = a:motion ==# 'w' || a:motion ==# 'e' ? 1 : 0
+    let isForward = a:motion ==# 'w' || a:motion ==# 'e'
     let line = getline(a:lnum)
     " skip if the line is blank
     if line !=# ''
-      let indices = s:getIndices(line, a:motion, isForward)
-      if a:motion ==# 'e' && a:isExSelEnd
-        let indices = map(indices, {k, v -> v + 1})
-      endif
+      " get the line indicating where the cursor is expected to move corresponding to the current line
+      let positionline = s:samplelines[a:lnum + #{w: 18, b: 36, e: 54, ge: 72}[a:motion] - 1]
+      let indices = s:getIndices(positionline, a:motion, isForward, a:isExSelEnd)
       if isForward
         " skip the initial position
         if a:isInitialLine && get(indices, 0, -1) == 1 | let indices = indices[1 :] | endif
-        " move to the last character of the line before moving to the next line
-        let lineEnd = strcharlen(matchstr(line, '^.\{-}\ze\s*$'))
-              \ + (a:isExSelEnd ? 1 : 0)
-        if get(indices, -1, -1) != lineEnd | call add(indices, lineEnd) | endif
       else
         " skip the initial position
         if a:isInitialLine && get(indices, 0, -1) == strcharlen(line) | let indices = indices[1 :] | endif
-        " move to the first character of the line before moving to the previous line
-        let lineStart = strcharlen(matchstr(line, '^\s*')) + 1
-        if get(indices, -1, -1) != lineStart | call add(indices, lineStart) | endif
       endif
       for index in indices
         execute "normal \<Plug>(craftyjump-word-" . a:motion . ')'
@@ -87,9 +72,6 @@ Context motions simply move the cursor
     endwhile
   enddef
   Context in normal mode
-    Before
-      call InitTestBuffer(s:samplelines)
-    End
     It moves forward using 'w' from the first line
       normal! gg0
       call s:moveWhole('w')
@@ -120,10 +102,6 @@ Context motions simply move the cursor
     End
   End
   Context in visual mode
-    Before
-      " use lines 8 to 16
-      call InitTestBuffer(s:samplelines[7 : 15])
-    End
     Context [v] characterwise (inclusive)
       Before
         set selection=inclusive
