@@ -3,12 +3,34 @@ scriptencoding utf-8
 
 themis#option('runtimepath', fnamemodify(expand('<sfile>'), ':h:h'))
 
+# the signs in the sample text indicate types of cursor movements as follows
+#   # - the cursor normally goes to the signed position
+#   + - in visual mode, the cursor always goes to just after the signed position
+#   * - if the cursor is at the end of the exclusive selection, it goes to just after the signed position
+#       if not, to the signed position
 def g:InitTestBuffer(lines: list<string>)
   # @param {list<string>} lines - set lines in the test buffer
   new | only!
   for lnum in range(1, len(lines))
     setline(lnum, lines[lnum - 1])
   endfor
+enddef
+def g:GetIndices(line: string, isForward: bool, isExSelEnd: bool): list<number>
+  # @param {string} line
+  # @param {bool} isForward - return indices if the motion is forward, reversed indices if backward
+  # @param {bool} isExSelEnd - whether the cursor is the end of the exclusive selection
+  # @return {list<number>} - character indices
+  final indices = []
+  const Put = function(isForward ? 'add' : 'insert', [indices])
+  const ptn_signs = '[#+*]'
+  const offsetsign = mode() =~# "[vV\<C-v>]" ? isExSelEnd ? '*' : '+' : ''
+  var pos = matchstrpos(line, ptn_signs) # 0-based byte index
+  while pos[0] !=# ''
+    # matchstrpos(...)[1] gives the 0-based byte index of the starting position of the match
+    Put(charidx(line, pos[1]) + (pos[0] ==# offsetsign ? 1 : 0) + 1) # convert 0-based character index to 1-based character index
+    pos = matchstrpos(line, ptn_signs, pos[2])
+  endwhile
+  return indices
 enddef
 
 # @param {list} expect - [lnum, charcol] of expected position

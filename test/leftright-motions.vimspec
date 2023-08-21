@@ -4,35 +4,12 @@ Describe leftright-motions
 
 let s:expect = function(themis#helper('expect'))
 let s:samplelines = readfile('test/sample_for_leftright_motions')
-" the signs in the sample text indicate types of cursor movements as follows
-"   # - the cursor normally goes to the signed position
-"   + - in visual mode, the cursor always goes to just after the signed position
-"   * - if the cursor is at the end of the exclusive selection, it goes to just after the signed position
-"       if not, to the signed position
 
 Context motions simply move the cursor
   Before
     " use line 1 to 3
     call InitTestBuffer(s:samplelines[0 : 2])
   End
-  function! s:getIndices(line, motion, isForward, isExSelEnd)
-    " @param {string} line
-    " @param {'home' | 'end'} motion
-    " @param {bool} isForward - return indices if the motion is forward, reversed indices if backward
-    " @param {bool} isExSelEnd - whether the cursor is the end of the exclusive selection
-    " @return {list<number>} - character indices of first or last characters
-    let indices = []
-    let Put = function(a:isForward ? 'add' : 'insert', [indices])
-    let ptn = '[#+*]'
-    let currenttype = mode() =~# "[vV\<C-v>]" ? a:isExSelEnd ? '*' : '+' : '#'
-    let pos = matchstrpos(a:line, ptn) " 0-based byte index
-    while pos[0] !=# ''
-      " matchstrpos(...)[1] gives the 0-based byte index of the starting position of the match
-      call Put(charidx(a:line, pos[1]) + (pos[0] !=# '#' && pos[0] ==# currenttype ? 1 : 0) + 1) " convert 0-based character index to 1-based character index
-      let pos = matchstrpos(a:line, ptn, pos[2])
-    endwhile
-    return indices
-  endfunction
   function! s:moveInLine(lnum, motion, isInitialLine, isExSelEnd)
     " @param {number} lnum - move in the line with the specified line number
     " @param {'home' | 'end'} motion
@@ -45,7 +22,7 @@ Context motions simply move the cursor
     if line !=# ''
       " get the line indicating where the cursor is expected to move corresponding to the current line
       let positionline = s:samplelines[a:lnum + #{home: 4, end: 8}[a:motion] - 1]
-      let indices = s:getIndices(positionline, a:motion, isForward, a:isExSelEnd)
+      let indices = GetIndices(positionline, isForward, a:isExSelEnd)
       if isForward
         " skip the initial position
         if a:isInitialLine && get(indices, 0, -1) == 1 | let indices = indices[1 :] | endif
