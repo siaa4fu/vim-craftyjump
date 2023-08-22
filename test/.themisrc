@@ -25,11 +25,11 @@ def g:GetIndices(posline: string, isForward: bool, isExSelEnd: bool, skipInitPos
   #   * - if the cursor is at the end of the exclusive selection, it goes to just after the signed position
   #       if not, to the signed position
   const ptn_signs = '[#+*]'
-  const offsetsign = mode() =~# "[vV\<C-v>]" ? isExSelEnd ? '*' : '+' : ''
+  const ptn_offsetsigns = mode() =~# "[vV\<C-v>]" ? isExSelEnd ? '[+*]' : '[+]' : '[]'
   var pos = matchstrpos(posline, ptn_signs) # 0-based byte index
   while pos[0] !=# ''
     # matchstrpos(...)[1] gives the 0-based byte index of the starting position of the match
-    Put(charidx(posline, pos[1]) + (pos[0] ==# offsetsign ? 1 : 0) + 1) # convert 0-based character index to 1-based character index
+    Put(charidx(posline, pos[1]) + (pos[0] =~# ptn_offsetsigns ? 1 : 0) + 1) # convert 0-based character index to 1-based character index
     pos = matchstrpos(posline, ptn_signs, pos[2])
   endwhile
   if skipInitPos && get(indices, 0, -1) == (isForward ? 1 : strcharlen(posline))
