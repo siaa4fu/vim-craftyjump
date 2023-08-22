@@ -2,7 +2,6 @@ scriptencoding utf-8
 " the text 'themis#suite()' is required to run test#viml#themis#test_file()
 Describe leftright-motions
 
-let s:expect = function(themis#helper('expect'))
 let s:samplelines = readfile('test/sample_for_leftright_motions')
 
 Context motions simply move the cursor
@@ -10,43 +9,22 @@ Context motions simply move the cursor
     " use line 1 to 3
     call InitTestBuffer(s:samplelines[0 : 2])
   End
-  function! s:moveInLine(lnum, motion, isInitialLine, isExSelEnd)
-    " @param {number} lnum - move in the line with the specified line number
-    " @param {'home' | 'end'} motion
-    " @param {bool} isInitialLine - skip the initial position even if it is a keyword character
-    " @param {bool} isExSelEnd - whether the cursor is the end of the exclusive selection
-    " @return {number} - next line number
-    let isForward = a:motion ==# 'end'
-    let line = getline(a:lnum)
-    " skip if the line is blank
-    if line !=# ''
-      " get the line indicating where the cursor is expected to move corresponding to the current line
-      let positionline = s:samplelines[a:lnum + #{home: 4, end: 8}[a:motion] - 1]
-      let indices = GetIndices(positionline, isForward, a:isExSelEnd)
-      if isForward
-        " skip the initial position
-        if a:isInitialLine && get(indices, 0, -1) == 1 | let indices = indices[1 :] | endif
-      else
-        " skip the initial position
-        if a:isInitialLine && get(indices, 0, -1) == strcharlen(line) | let indices = indices[1 :] | endif
-      endif
-      for index in indices
-        execute "normal \<Plug>(craftyjump-" . a:motion . ')'
-        call s:expect(v:null).to_be_at_position([a:lnum, index])
-      endfor
-    endif
-    return a:lnum + (isForward ? 1 : -1)
-  endfunction
   def s:moveWhole(motion: string, isExSelEnd = v:false)
     # move forward from the current position to the end of the buffer, or backward to the start
     # @param {'home' | 'end'} motion
     # @param {bool=} isExSelEnd - whether the cursor is the end of the exclusive selection
     const isForward = motion ==# 'end'
+    const keyToMove = "\<Plug>(craftyjump-" .. motion .. ')'
+    const GetIndices = (lnum, skipInitPos) => {
+      const offset_to_posline = {home: 4, end: 8}[motion] - 1
+      return g:GetIndices(s:samplelines[lnum + offset_to_posline], isForward, isExSelEnd, skipInitPos)
+    }
     const NotAtBufferEdge = isForward ? (lnum) => lnum <= line('$') : (lnum) => lnum > 0
-    var lnum = s:moveInLine(line('.'), motion, v:true, isExSelEnd)
+    var lnum = line('.')
+    lnum = g:MoveInLine(lnum, GetIndices(lnum, v:true), keyToMove, isForward)
     while NotAtBufferEdge(lnum)
       execute 'normal!' (isForward ? 'gjg0' : 'gkg$')
-      lnum = s:moveInLine(lnum, motion, v:false, isExSelEnd)
+      lnum = g:MoveInLine(lnum, GetIndices(lnum, v:false), keyToMove, isForward)
     endwhile
   enddef
   Context in normal mode
@@ -65,8 +43,8 @@ Context motions simply move the cursor
         set selection=inclusive
       End
       After
-        call s:expect(&selection).to_equal('inclusive')
-        call s:expect(mode()).to_equal('v')
+        call g:Expect(&selection).to_equal('inclusive')
+        call g:Expect(mode()).to_equal('v')
       End
       It 'home'
         " move the start of the selection
@@ -90,8 +68,8 @@ Context motions simply move the cursor
         set selection=exclusive
       End
       After
-        call s:expect(&selection).to_equal('exclusive')
-        call s:expect(mode()).to_equal('v')
+        call g:Expect(&selection).to_equal('exclusive')
+        call g:Expect(mode()).to_equal('v')
       End
       It 'home'
         " move the start of the selection
@@ -115,8 +93,8 @@ Context motions simply move the cursor
         set selection=inclusive
       End
       After
-        call s:expect(&selection).to_equal('inclusive')
-        call s:expect(mode()).to_equal('V')
+        call g:Expect(&selection).to_equal('inclusive')
+        call g:Expect(mode()).to_equal('V')
       End
       It 'home'
         " move the start of the selection
@@ -140,8 +118,8 @@ Context motions simply move the cursor
         set selection=exclusive
       End
       After
-        call s:expect(&selection).to_equal('exclusive')
-        call s:expect(mode()).to_equal('V')
+        call g:Expect(&selection).to_equal('exclusive')
+        call g:Expect(mode()).to_equal('V')
       End
       It 'home'
         " move the start of the selection
@@ -165,8 +143,8 @@ Context motions simply move the cursor
         set selection=inclusive
       End
       After
-        call s:expect(&selection).to_equal('inclusive')
-        call s:expect(mode()).to_equal("\<C-v>")
+        call g:Expect(&selection).to_equal('inclusive')
+        call g:Expect(mode()).to_equal("\<C-v>")
       End
       It 'home'
         " move the start of the selection
@@ -190,8 +168,8 @@ Context motions simply move the cursor
         set selection=exclusive
       End
       After
-        call s:expect(&selection).to_equal('exclusive')
-        call s:expect(mode()).to_equal("\<C-v>")
+        call g:Expect(&selection).to_equal('exclusive')
+        call g:Expect(mode()).to_equal("\<C-v>")
       End
       It 'home'
         " move the start of the selection
@@ -220,43 +198,43 @@ Context motions are used after operators
   End
   function! s:dotrepeat(expect)
     normal! .
-    call s:expect(getline('.')).to_equal(a:expect)
+    call g:Expect(getline('.')).to_equal(a:expect)
   endfunction
   Context d{motion} - delete words
     It 'd<home>' (exclusive)
       normal! G$
       " delete to first characters and repeat
       execute "normal d\<Plug>(craftyjump-home)"
-      call s:expect(getline('.')).to_equal(' ')
+      call g:Expect(getline('.')).to_equal(' ')
       call s:dotrepeat('')
       " previous line
       execute "normal d2\<Plug>(craftyjump-home)"
-      call s:expect(getline('.')).to_equal('     ')
+      call g:Expect(getline('.')).to_equal('     ')
       execute "normal d\<Plug>(craftyjump-home)"
-      call s:expect(getline('.')).to_equal(' ')
+      call g:Expect(getline('.')).to_equal(' ')
       call s:dotrepeat('')
       " previous line
       execute "normal d2\<Plug>(craftyjump-home)"
-      call s:expect(getline('.')).to_equal('          ')
+      call g:Expect(getline('.')).to_equal('          ')
       execute "normal d\<Plug>(craftyjump-home)"
-      call s:expect(getline('.')).to_equal(' ')
+      call g:Expect(getline('.')).to_equal(' ')
       call s:dotrepeat('')
     End
     It 'd<end>' (inclusive)
       normal! gg0
       " delete to last characters and repeat
       execute "normal d\<Plug>(craftyjump-end)"
-      call s:expect(getline('.')).to_equal('')
+      call g:Expect(getline('.')).to_equal('')
       " next line
       execute "normal d2\<Plug>(craftyjump-end)"
-      call s:expect(getline('.')).to_equal('     ')
+      call g:Expect(getline('.')).to_equal('     ')
       execute "normal d\<Plug>(craftyjump-end)"
-      call s:expect(getline('.')).to_equal('')
+      call g:Expect(getline('.')).to_equal('')
       " next line
       execute "normal d2\<Plug>(craftyjump-end)"
-      call s:expect(getline('.')).to_equal('          ')
+      call g:Expect(getline('.')).to_equal('          ')
       execute "normal d\<Plug>(craftyjump-end)"
-      call s:expect(getline('.')).to_equal('')
+      call g:Expect(getline('.')).to_equal('')
     End
   End
   Context c{motion} - change words
@@ -265,36 +243,36 @@ Context motions are used after operators
       normal! G$
       " change to first characters and repeat
       execute "normal c\<Plug>(craftyjump-home)\<Esc>"
-      call s:expect(getline('.')).to_equal(' ')
+      call g:Expect(getline('.')).to_equal(' ')
       call s:dotrepeat('')
       " previous line
       execute "normal c2\<Plug>(craftyjump-home)\<Esc>"
-      call s:expect(getline('.')).to_equal('     ')
+      call g:Expect(getline('.')).to_equal('     ')
       execute "normal c\<Plug>(craftyjump-home)\<Esc>"
-      call s:expect(getline('.')).to_equal(' ')
+      call g:Expect(getline('.')).to_equal(' ')
       call s:dotrepeat('')
       " change 2 words and repeat
       execute "normal c2\<Plug>(craftyjump-home)\<Esc>"
-      call s:expect(getline('.')).to_equal('          ')
+      call g:Expect(getline('.')).to_equal('          ')
       execute "normal c\<Plug>(craftyjump-home)\<Esc>"
-      call s:expect(getline('.')).to_equal(' ')
+      call g:Expect(getline('.')).to_equal(' ')
       call s:dotrepeat('')
     End
     It 'c<end>' (inclusive)
       normal! gg0
       " change to last characters and repeat
       execute "normal c\<Plug>(craftyjump-end)\<Esc>"
-      call s:expect(getline('.')).to_equal('')
+      call g:Expect(getline('.')).to_equal('')
       " next line
       execute "normal c2\<Plug>(craftyjump-end)\<Esc>"
-      call s:expect(getline('.')).to_equal('     ')
+      call g:Expect(getline('.')).to_equal('     ')
       execute "normal c\<Plug>(craftyjump-end)\<Esc>"
-      call s:expect(getline('.')).to_equal('')
+      call g:Expect(getline('.')).to_equal('')
       " next line
       execute "normal c2\<Plug>(craftyjump-end)\<Esc>"
-      call s:expect(getline('.')).to_equal('          ')
+      call g:Expect(getline('.')).to_equal('          ')
       execute "normal c\<Plug>(craftyjump-end)\<Esc>"
-      call s:expect(getline('.')).to_equal('')
+      call g:Expect(getline('.')).to_equal('')
     End
   End
 End
