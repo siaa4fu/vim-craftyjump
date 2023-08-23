@@ -3,6 +3,12 @@ scriptencoding utf-8
 Describe leftright-motions
 
 let s:samplelines = readfile('test/sample_for_leftright_motions')
+def s:GoToPrevLine()
+  execute 'normal!' &wrap ? 'gkg$' : 'k$ze'
+enddef
+def s:GoToNextLine()
+  execute 'normal!' &wrap ? 'gjg0' : 'j0zs'
+enddef
 
 Context motions simply move the cursor
   Before
@@ -16,176 +22,352 @@ Context motions simply move the cursor
     const isForward = motion ==# 'end'
     const keyToMove = "\<Plug>(craftyjump-" .. motion .. ')'
     const GetIndices = (lnum, skipInitPos) => {
-      const offset_to_posline = {home: 4, end: 8}[motion] - 1
+      const offset_to_posline = (&wrap ? {home: 4, end: 8} : {home: 12, end: 16})[motion] - 1
       return g:GetIndices(s:samplelines[lnum + offset_to_posline], isForward, isExSelEnd, skipInitPos)
     }
     const NotAtBufferEdge = isForward ? (lnum) => lnum <= line('$') : (lnum) => lnum > 0
     var lnum = line('.')
     lnum = g:MoveInLine(lnum, GetIndices(lnum, v:true), keyToMove, isForward)
     while NotAtBufferEdge(lnum)
-      execute 'normal!' (isForward ? 'gjg0' : 'gkg$')
+      (isForward ? s:GoToNextLine() : s:GoToPrevLine())
       lnum = g:MoveInLine(lnum, GetIndices(lnum, v:false), keyToMove, isForward)
     endwhile
   enddef
-  Context in normal mode
-    It moves backward using 'home' from the last line
-      normal! G$
-      call s:moveWhole('home')
+  Context wrap (when &wrap is on)
+    Before all
+      let &columns = 20
+      set wrap
     End
-    It moves forward using 'end' from the first line
-      normal! gg0
-      call s:moveWhole('end')
+    After all
+      set columns&
+    End
+    Context in normal mode
+      It moves backward using 'home' from the last line
+        normal! G$
+        call s:moveWhole('home')
+      End
+      It moves forward using 'end' from the first line
+        normal! gg0
+        call s:moveWhole('end')
+      End
+    End
+    Context in visual mode
+      Context [v] characterwise (inclusive)
+        Before
+          set selection=inclusive
+        End
+        After
+          call g:Expect(&selection).to_equal('inclusive')
+          call g:Expect(mode()).to_equal('v')
+        End
+        It 'home'
+          " move the start of the selection
+          normal! G$v
+          call s:moveWhole('home', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('home', v:false)
+        End
+        It 'end'
+          " move the end of the selection
+          normal! gg0v
+          call s:moveWhole('end', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('end', v:false)
+        End
+      End
+      Context [v] characterwise (exclusive)
+        Before
+          set selection=exclusive
+        End
+        After
+          call g:Expect(&selection).to_equal('exclusive')
+          call g:Expect(mode()).to_equal('v')
+        End
+        It 'home'
+          " move the start of the selection
+          normal! G$v
+          call s:moveWhole('home', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('home', v:true)
+        End
+        It 'end'
+          " move the end of the selection
+          normal! gg0v
+          call s:moveWhole('end', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('end', v:false)
+        End
+      End
+      Context [V] linewise (inclusive)
+        Before
+          set selection=inclusive
+        End
+        After
+          call g:Expect(&selection).to_equal('inclusive')
+          call g:Expect(mode()).to_equal('V')
+        End
+        It 'home'
+          " move the start of the selection
+          normal! G$V
+          call s:moveWhole('home', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('home', v:false)
+        End
+        It 'end'
+          " move the end of the selection
+          normal! gg0V
+          call s:moveWhole('end', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('end', v:false)
+        End
+      End
+      Context [V] linewise (exclusive)
+        Before
+          set selection=exclusive
+        End
+        After
+          call g:Expect(&selection).to_equal('exclusive')
+          call g:Expect(mode()).to_equal('V')
+        End
+        It 'home'
+          " move the start of the selection
+          normal! G$V
+          call s:moveWhole('home', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('home', v:true)
+        End
+        It 'end'
+          " move the end of the selection
+          normal! gg0V
+          call s:moveWhole('end', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('end', v:false)
+        End
+      End
+      Context [<C-v>] blockwise (inclusive)
+        Before
+          set selection=inclusive
+        End
+        After
+          call g:Expect(&selection).to_equal('inclusive')
+          call g:Expect(mode()).to_equal("\<C-v>")
+        End
+        It 'home'
+          " move the start of the selection
+          execute "normal! G$\<C-v>"
+          call s:moveWhole('home', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('home', v:false)
+        End
+        It 'end'
+          " move the end of the selection
+          execute "normal! gg0\<C-v>"
+          call s:moveWhole('end', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('end', v:false)
+        End
+      End
+      Context [<C-v>] blockwise (exclusive)
+        Before
+          set selection=exclusive
+        End
+        After
+          call g:Expect(&selection).to_equal('exclusive')
+          call g:Expect(mode()).to_equal("\<C-v>")
+        End
+        It 'home'
+          " move the start of the selection
+          execute "normal! G$\<C-v>"
+          call s:moveWhole('home', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('home', v:true)
+        End
+        It 'end'
+          " move the end of the selection
+          execute "normal! gg0\<C-v>"
+          call s:moveWhole('end', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('end', v:false)
+        End
+      End
     End
   End
-  Context in visual mode
-    Context [v] characterwise (inclusive)
-      Before
-        set selection=inclusive
+  Context nowrap (when &wrap is off)
+    Before all
+      set nowrap
+    End
+    Context in normal mode
+      It moves backward using 'home' from the last line
+        normal! G$
+        call s:moveWhole('home')
       End
-      After
-        call g:Expect(&selection).to_equal('inclusive')
-        call g:Expect(mode()).to_equal('v')
-      End
-      It 'home'
-        " move the start of the selection
-        normal! G$v
-        call s:moveWhole('home', v:false)
-        " move the end of the selection
-        normal! o
-        call s:moveWhole('home', v:false)
-      End
-      It 'end'
-        " move the end of the selection
-        normal! gg0v
-        call s:moveWhole('end', v:false)
-        " move the start of the selection
-        normal! o
-        call s:moveWhole('end', v:false)
+      It moves forward using 'end' from the first line
+        normal! gg0
+        call s:moveWhole('end')
       End
     End
-    Context [v] characterwise (exclusive)
-      Before
-        set selection=exclusive
+    Context in visual mode
+      Context [v] characterwise (inclusive)
+        Before
+          set selection=inclusive
+        End
+        After
+          call g:Expect(&selection).to_equal('inclusive')
+          call g:Expect(mode()).to_equal('v')
+        End
+        It 'home'
+          " move the start of the selection
+          normal! G$v
+          call s:moveWhole('home', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('home', v:false)
+        End
+        It 'end'
+          " move the end of the selection
+          normal! gg0v
+          call s:moveWhole('end', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('end', v:false)
+        End
       End
-      After
-        call g:Expect(&selection).to_equal('exclusive')
-        call g:Expect(mode()).to_equal('v')
+      Context [v] characterwise (exclusive)
+        Before
+          set selection=exclusive
+        End
+        After
+          call g:Expect(&selection).to_equal('exclusive')
+          call g:Expect(mode()).to_equal('v')
+        End
+        It 'home'
+          " move the start of the selection
+          normal! G$v
+          call s:moveWhole('home', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('home', v:true)
+        End
+        It 'end'
+          " move the end of the selection
+          normal! gg0v
+          call s:moveWhole('end', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('end', v:false)
+        End
       End
-      It 'home'
-        " move the start of the selection
-        normal! G$v
-        call s:moveWhole('home', v:false)
-        " move the end of the selection
-        normal! o
-        call s:moveWhole('home', v:true)
+      Context [V] linewise (inclusive)
+        Before
+          set selection=inclusive
+        End
+        After
+          call g:Expect(&selection).to_equal('inclusive')
+          call g:Expect(mode()).to_equal('V')
+        End
+        It 'home'
+          " move the start of the selection
+          normal! G$V
+          call s:moveWhole('home', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('home', v:false)
+        End
+        It 'end'
+          " move the end of the selection
+          normal! gg0V
+          call s:moveWhole('end', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('end', v:false)
+        End
       End
-      It 'end'
-        " move the end of the selection
-        normal! gg0v
-        call s:moveWhole('end', v:true)
-        " move the start of the selection
-        normal! o
-        call s:moveWhole('end', v:false)
+      Context [V] linewise (exclusive)
+        Before
+          set selection=exclusive
+        End
+        After
+          call g:Expect(&selection).to_equal('exclusive')
+          call g:Expect(mode()).to_equal('V')
+        End
+        It 'home'
+          " move the start of the selection
+          normal! G$V
+          call s:moveWhole('home', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('home', v:true)
+        End
+        It 'end'
+          " move the end of the selection
+          normal! gg0V
+          call s:moveWhole('end', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('end', v:false)
+        End
       End
-    End
-    Context [V] linewise (inclusive)
-      Before
-        set selection=inclusive
+      Context [<C-v>] blockwise (inclusive)
+        Before
+          set selection=inclusive
+        End
+        After
+          call g:Expect(&selection).to_equal('inclusive')
+          call g:Expect(mode()).to_equal("\<C-v>")
+        End
+        It 'home'
+          " move the start of the selection
+          execute "normal! G$\<C-v>"
+          call s:moveWhole('home', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('home', v:false)
+        End
+        It 'end'
+          " move the end of the selection
+          execute "normal! gg0\<C-v>"
+          call s:moveWhole('end', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('end', v:false)
+        End
       End
-      After
-        call g:Expect(&selection).to_equal('inclusive')
-        call g:Expect(mode()).to_equal('V')
-      End
-      It 'home'
-        " move the start of the selection
-        normal! G$V
-        call s:moveWhole('home', v:false)
-        " move the end of the selection
-        normal! o
-        call s:moveWhole('home', v:false)
-      End
-      It 'end'
-        " move the end of the selection
-        normal! gg0V
-        call s:moveWhole('end', v:false)
-        " move the start of the selection
-        normal! o
-        call s:moveWhole('end', v:false)
-      End
-    End
-    Context [V] linewise (exclusive)
-      Before
-        set selection=exclusive
-      End
-      After
-        call g:Expect(&selection).to_equal('exclusive')
-        call g:Expect(mode()).to_equal('V')
-      End
-      It 'home'
-        " move the start of the selection
-        normal! G$V
-        call s:moveWhole('home', v:false)
-        " move the end of the selection
-        normal! o
-        call s:moveWhole('home', v:true)
-      End
-      It 'end'
-        " move the end of the selection
-        normal! gg0V
-        call s:moveWhole('end', v:true)
-        " move the start of the selection
-        normal! o
-        call s:moveWhole('end', v:false)
-      End
-    End
-    Context [<C-v>] blockwise (inclusive)
-      Before
-        set selection=inclusive
-      End
-      After
-        call g:Expect(&selection).to_equal('inclusive')
-        call g:Expect(mode()).to_equal("\<C-v>")
-      End
-      It 'home'
-        " move the start of the selection
-        execute "normal! G$\<C-v>"
-        call s:moveWhole('home', v:false)
-        " move the end of the selection
-        normal! o
-        call s:moveWhole('home', v:false)
-      End
-      It 'end'
-        " move the end of the selection
-        execute "normal! gg0\<C-v>"
-        call s:moveWhole('end', v:false)
-        " move the start of the selection
-        normal! o
-        call s:moveWhole('end', v:false)
-      End
-    End
-    Context [<C-v>] blockwise (exclusive)
-      Before
-        set selection=exclusive
-      End
-      After
-        call g:Expect(&selection).to_equal('exclusive')
-        call g:Expect(mode()).to_equal("\<C-v>")
-      End
-      It 'home'
-        " move the start of the selection
-        execute "normal! G$\<C-v>"
-        call s:moveWhole('home', v:false)
-        " move the end of the selection
-        normal! o
-        call s:moveWhole('home', v:true)
-      End
-      It 'end'
-        " move the end of the selection
-        execute "normal! gg0\<C-v>"
-        call s:moveWhole('end', v:true)
-        " move the start of the selection
-        normal! o
-        call s:moveWhole('end', v:false)
+      Context [<C-v>] blockwise (exclusive)
+        Before
+          set selection=exclusive
+        End
+        After
+          call g:Expect(&selection).to_equal('exclusive')
+          call g:Expect(mode()).to_equal("\<C-v>")
+        End
+        It 'home'
+          " move the start of the selection
+          execute "normal! G$\<C-v>"
+          call s:moveWhole('home', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('home', v:true)
+        End
+        It 'end'
+          " move the end of the selection
+          execute "normal! gg0\<C-v>"
+          call s:moveWhole('end', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('end', v:false)
+        End
       End
     End
   End
@@ -200,73 +382,181 @@ Context motions are used after operators
     normal! .
     call g:Expect(getline('.')).to_equal(a:expect)
   endfunction
-  Context d{motion} - delete words
-    It 'd<home>' (exclusive)
-      normal! G$
-      " delete to first characters and repeat
-      execute "normal d\<Plug>(craftyjump-home)"
-      call g:Expect(getline('.')).to_equal(' ')
-      call s:dotrepeat('')
-      " previous line
-      execute "normal d2\<Plug>(craftyjump-home)"
-      call g:Expect(getline('.')).to_equal('     ')
-      execute "normal d\<Plug>(craftyjump-home)"
-      call g:Expect(getline('.')).to_equal(' ')
-      call s:dotrepeat('')
-      " previous line
-      execute "normal d2\<Plug>(craftyjump-home)"
-      call g:Expect(getline('.')).to_equal('          ')
-      execute "normal d\<Plug>(craftyjump-home)"
-      call g:Expect(getline('.')).to_equal(' ')
-      call s:dotrepeat('')
+  Context wrap (when &wrap is on)
+    Before all
+      let &columns = 20
+      set wrap
     End
-    It 'd<end>' (inclusive)
-      normal! gg0
-      " delete to last characters and repeat
-      execute "normal d\<Plug>(craftyjump-end)"
-      call g:Expect(getline('.')).to_equal('')
-      " next line
-      call s:dotrepeat('     123456789012345678901234567890123456789012345678901234567890     ')
-      call s:dotrepeat('     ')
-      " next line
-      call s:dotrepeat('123456789012345678901234567890123456789012345678901234567890          ')
-      call s:dotrepeat('          ')
-      call s:dotrepeat('')
+    After all
+      set columns&
+    End
+    Context d{motion} - delete words
+      It 'd<home>' (exclusive)
+        normal! G$
+        " delete to first characters and repeat
+        execute "normal d\<Plug>(craftyjump-home)"
+        call g:Expect(getline('.')).to_equal('123456789012345678901234567890123456789012345678901234567890 ')
+        call s:dotrepeat('1234567890123456789012345678901234567890 ')
+        call s:dotrepeat('12345678901234567890 ')
+        call s:dotrepeat(' ')
+        call s:dotrepeat('')
+        " previous line
+        call s:GoToPrevLine()
+        call s:dotrepeat('     1234567890123456789012345678901234567890123456789012345 ')
+        call s:dotrepeat('     12345678901234567890123456789012345 ')
+        call s:dotrepeat('     123456789012345 ')
+        call s:dotrepeat('      ')
+        call s:dotrepeat(' ')
+        call s:dotrepeat('')
+        " previous line
+        call s:GoToPrevLine()
+        call s:dotrepeat('          123456789012345678901234567890123456789012345678900')
+        call s:dotrepeat('          1234567890123456789012345678900')
+        call s:dotrepeat('          12345678900')
+        call s:dotrepeat('          0')
+        call s:dotrepeat('0')
+        call s:dotrepeat('')
+      End
+      It 'd<end>' (inclusive)
+        normal! gg0
+        " delete to last characters and repeat
+        execute "normal d\<Plug>(craftyjump-end)"
+        call g:Expect(getline('.')).to_equal('12345678901234567890123456789012345678901234567890')
+        call s:dotrepeat('123456789012345678901234567890')
+        call s:dotrepeat('1234567890')
+        call s:dotrepeat('')
+        " next line
+        call s:GoToNextLine()
+        call s:dotrepeat('678901234567890123456789012345678901234567890     ')
+        call s:dotrepeat('6789012345678901234567890     ')
+        call s:dotrepeat('67890     ')
+        call s:dotrepeat('     ')
+        " next line
+        call s:dotrepeat('123456789012345678901234567890123456789012345678901234567890          ')
+        call s:dotrepeat('1234567890123456789012345678901234567890          ')
+        call s:dotrepeat('12345678901234567890          ')
+        call s:dotrepeat('          ')
+        call s:dotrepeat('')
+      End
+    End
+    Context c{motion} - change words
+      " after exiting insert mode, the cursor position shifts one to the left
+      It 'c<Home>' (exclusive)
+        normal! G$
+        " change to first characters and repeat
+        execute "normal c\<Plug>(craftyjump-home)\<Esc>"
+        call g:Expect(getline('.')).to_equal('123456789012345678901234567890123456789012345678901234567890 ')
+        call s:dotrepeat('12345678901234567890123456789012345678900 ')
+        call s:dotrepeat('1234567890123456789000 ')
+        call s:dotrepeat('000 ')
+        " previous line
+        call s:GoToPrevLine()
+        call s:dotrepeat('     1234567890123456789012345678901234567890123456789012345 ')
+        call s:dotrepeat('     123456789012345678901234567890123455 ')
+        call s:dotrepeat('     12345678901234555 ')
+        call s:dotrepeat('     555 ')
+        call s:dotrepeat(' 555 ')
+        " previous line
+        call s:GoToPrevLine()
+        call s:dotrepeat('          123456789012345678901234567890123456789012345678900')
+        call s:dotrepeat('          12345678901234567890123456789000')
+        call s:dotrepeat('          1234567890000')
+        call s:dotrepeat('          0000')
+        call s:dotrepeat(' 0000')
+      End
+      It 'c<end>' (inclusive)
+        normal! gg0
+        " change to last characters and repeat
+        execute "normal c\<Plug>(craftyjump-end)\<Esc>"
+        call g:Expect(getline('.')).to_equal('12345678901234567890123456789012345678901234567890')
+        call s:dotrepeat('123456789012345678901234567890')
+        call s:dotrepeat('1234567890')
+        call s:dotrepeat('')
+        " next line
+        call s:GoToNextLine()
+        call s:dotrepeat('678901234567890123456789012345678901234567890     ')
+        call s:dotrepeat('6789012345678901234567890     ')
+        call s:dotrepeat('67890     ')
+        call s:dotrepeat('     ')
+        " next line
+        call s:dotrepeat('123456789012345678901234567890123456789012345678901234567890          ')
+        call s:dotrepeat('1234567890123456789012345678901234567890          ')
+        call s:dotrepeat('12345678901234567890          ')
+        call s:dotrepeat('          ')
+        call s:dotrepeat('')
+      End
     End
   End
-  Context c{motion} - change words
-    " after exiting insert mode, the cursor position shifts one to the left
-    It 'c<Home>' (exclusive)
-      normal! G$
-      " change to first characters and repeat
-      execute "normal c\<Plug>(craftyjump-home)\<Esc>"
-      call g:Expect(getline('.')).to_equal(' ')
-      call s:dotrepeat('')
-      " previous line
-      execute "normal c2\<Plug>(craftyjump-home)\<Esc>"
-      call g:Expect(getline('.')).to_equal('     ')
-      execute "normal c\<Plug>(craftyjump-home)\<Esc>"
-      call g:Expect(getline('.')).to_equal(' ')
-      call s:dotrepeat('')
-      " change 2 words and repeat
-      execute "normal c2\<Plug>(craftyjump-home)\<Esc>"
-      call g:Expect(getline('.')).to_equal('          ')
-      execute "normal c\<Plug>(craftyjump-home)\<Esc>"
-      call g:Expect(getline('.')).to_equal(' ')
-      call s:dotrepeat('')
+  Context nowrap (when &wrap is off)
+    Before all
+      set nowrap
     End
-    It 'c<end>' (inclusive)
-      normal! gg0
-      " change to last characters and repeat
-      execute "normal c\<Plug>(craftyjump-end)\<Esc>"
-      call g:Expect(getline('.')).to_equal('')
-      " next line
-      call s:dotrepeat('     123456789012345678901234567890123456789012345678901234567890     ')
-      call s:dotrepeat('     ')
-      " next line
-      call s:dotrepeat('123456789012345678901234567890123456789012345678901234567890          ')
-      call s:dotrepeat('          ')
-      call s:dotrepeat('')
+    Context d{motion} - delete words
+      It 'd<home>' (exclusive)
+        normal! G$
+        " delete to first characters and repeat
+        execute "normal d\<Plug>(craftyjump-home)"
+        call g:Expect(getline('.')).to_equal(' ')
+        call s:dotrepeat('')
+        " previous line
+        normal! k$ze
+        call s:dotrepeat('      ')
+        call s:dotrepeat(' ')
+        call s:dotrepeat('')
+        " previous line
+        normal! k$ze
+        call s:dotrepeat('          0')
+        call s:dotrepeat('0')
+        call s:dotrepeat('')
+      End
+      It 'd<end>' (inclusive)
+        normal! gg0
+        " delete to last characters and repeat
+        execute "normal d\<Plug>(craftyjump-end)"
+        call g:Expect(getline('.')).to_equal('')
+        " next line
+        normal! j0zs
+        call s:dotrepeat('     ')
+        " next line
+        call s:dotrepeat('123456789012345678901234567890123456789012345678901234567890          ')
+        call s:dotrepeat('          ')
+        call s:dotrepeat('')
+      End
+    End
+    Context c{motion} - change words
+      " after exiting insert mode, the cursor position shifts one to the left
+      It 'c<Home>' (exclusive)
+        normal! G$
+        " change to first characters and repeat
+        execute "normal c\<Plug>(craftyjump-home)\<Esc>"
+        call g:Expect(getline('.')).to_equal(' ')
+        call s:dotrepeat('')
+        " previous line
+        normal! k$ze
+        call s:dotrepeat('      ')
+        call s:dotrepeat('  ')
+        call s:dotrepeat(' ')
+        call s:dotrepeat('')
+        " previous line
+        normal! k$ze
+        call s:dotrepeat('          0')
+        call s:dotrepeat(' 0')
+        call s:dotrepeat('0')
+        call s:dotrepeat('')
+      End
+      It 'c<end>' (inclusive)
+        normal! gg0
+        " change to last characters and repeat
+        execute "normal c\<Plug>(craftyjump-end)\<Esc>"
+        call g:Expect(getline('.')).to_equal('')
+        " next line
+        normal! j0zs
+        call s:dotrepeat('     ')
+        " next line
+        call s:dotrepeat('123456789012345678901234567890123456789012345678901234567890          ')
+        call s:dotrepeat('          ')
+        call s:dotrepeat('')
+      End
     End
   End
 End
