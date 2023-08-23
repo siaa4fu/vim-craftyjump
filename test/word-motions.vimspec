@@ -12,7 +12,7 @@ Context motions simply move the cursor
   def s:moveWhole(motion: string, isExSelEnd = v:false)
     # move forward from the current position to the end of the buffer, or backward to the start
     # @param {'w' | 'b' | 'e' | 'ge'} motion
-    # @param {bool=} isExSelEnd - whether the cursor is the end of the exclusive selection
+    # @param {bool=} isExSelEnd - whether the cursor is at the end of the exclusive selection
     const isForward = motion ==# 'w' || motion ==# 'e'
     const keyToMove = "\<Plug>(craftyjump-word-" .. motion .. ')'
     const GetIndices = (lnum, skipInitPos) => {
@@ -56,13 +56,16 @@ Context motions simply move the cursor
       call g:Expect(v:null).to_be_at_position([1, '0'])
     End
   End
-  Context in visual mode
-    Context [v] characterwise (inclusive)
-      Before
-        set selection=inclusive
-      End
+  Context in visual mode (when &selection is 'inclusive')
+    Before all
+      set selection=inclusive
+    End
+    After all
+      call g:Expect(&selection).to_equal('inclusive')
+      set selection&
+    End
+    Context characterwise - v
       After
-        call g:Expect(&selection).to_equal('inclusive')
         call g:Expect(mode()).to_equal('v')
       End
       It 'w'
@@ -98,53 +101,8 @@ Context motions simply move the cursor
         call s:moveWhole('ge', v:false)
       End
     End
-    Context [v] characterwise (exclusive)
-      Before
-        set selection=exclusive
-      End
+    Context linewise - V
       After
-        call g:Expect(&selection).to_equal('exclusive')
-        call g:Expect(mode()).to_equal('v')
-      End
-      It 'w'
-        " move the end of the selection
-        normal! gg0v
-        call s:moveWhole('w', v:true)
-        " move the start of the selection
-        normal! o
-        call s:moveWhole('w', v:false)
-      End
-      It 'b'
-        " move the start of the selection
-        normal! G$v
-        call s:moveWhole('b', v:false)
-        " move the end of the selection
-        normal! o
-        call s:moveWhole('b', v:true)
-      End
-      It 'e'
-        " move the end of the selection
-        normal! gg0v
-        call s:moveWhole('e', v:true)
-        " move the start of the selection
-        normal! o
-        call s:moveWhole('e', v:false)
-      End
-      It 'ge'
-        " move the start of the selection
-        normal! G$v
-        call s:moveWhole('ge', v:false)
-        " move the end of the selection
-        normal! o
-        call s:moveWhole('ge', v:true)
-      End
-    End
-    Context [V] linewise (inclusive)
-      Before
-        set selection=inclusive
-      End
-      After
-        call g:Expect(&selection).to_equal('inclusive')
         call g:Expect(mode()).to_equal('V')
       End
       It 'w'
@@ -180,53 +138,8 @@ Context motions simply move the cursor
         call s:moveWhole('ge', v:false)
       End
     End
-    Context [V] linewise (exclusive)
-      Before
-        set selection=exclusive
-      End
+    Context blockwise - <C-v>
       After
-        call g:Expect(&selection).to_equal('exclusive')
-        call g:Expect(mode()).to_equal('V')
-      End
-      It 'w'
-        " move the end of the selection
-        normal! gg0V
-        call s:moveWhole('w', v:true)
-        " move the start of the selection
-        normal! o
-        call s:moveWhole('w', v:false)
-      End
-      It 'b'
-        " move the start of the selection
-        normal! G$V
-        call s:moveWhole('b', v:false)
-        " move the end of the selection
-        normal! o
-        call s:moveWhole('b', v:true)
-      End
-      It 'e'
-        " move the end of the selection
-        normal! gg0V
-        call s:moveWhole('e', v:true)
-        " move the start of the selection
-        normal! o
-        call s:moveWhole('e', v:false)
-      End
-      It 'ge'
-        " move the start of the selection
-        normal! G$V
-        call s:moveWhole('ge', v:false)
-        " move the end of the selection
-        normal! o
-        call s:moveWhole('ge', v:true)
-      End
-    End
-    Context [<C-v>] blockwise (inclusive)
-      Before
-        set selection=inclusive
-      End
-      After
-        call g:Expect(&selection).to_equal('inclusive')
         call g:Expect(mode()).to_equal("\<C-v>")
       End
       It 'w'
@@ -262,12 +175,91 @@ Context motions simply move the cursor
         call s:moveWhole('ge', v:false)
       End
     End
-    Context [<C-v>] blockwise (exclusive)
-      Before
-        set selection=exclusive
-      End
+  End
+  Context in visual mode (when &selection is 'exclusive')
+    Before all
+      set selection=exclusive
+    End
+    After all
+      call g:Expect(&selection).to_equal('exclusive')
+      set selection&
+    End
+    Context characterwise - v
       After
-        call g:Expect(&selection).to_equal('exclusive')
+        call g:Expect(mode()).to_equal('v')
+      End
+      It 'w'
+        " move the end of the selection
+        normal! gg0v
+        call s:moveWhole('w', v:true)
+        " move the start of the selection
+        normal! o
+        call s:moveWhole('w', v:false)
+      End
+      It 'b'
+        " move the start of the selection
+        normal! G$v
+        call s:moveWhole('b', v:false)
+        " move the end of the selection
+        normal! o
+        call s:moveWhole('b', v:true)
+      End
+      It 'e'
+        " move the end of the selection
+        normal! gg0v
+        call s:moveWhole('e', v:true)
+        " move the start of the selection
+        normal! o
+        call s:moveWhole('e', v:false)
+      End
+      It 'ge'
+        " move the start of the selection
+        normal! G$v
+        call s:moveWhole('ge', v:false)
+        " move the end of the selection
+        normal! o
+        call s:moveWhole('ge', v:true)
+      End
+    End
+    Context linewise - V
+      After
+        call g:Expect(mode()).to_equal('V')
+      End
+      It 'w'
+        " move the end of the selection
+        normal! gg0V
+        call s:moveWhole('w', v:true)
+        " move the start of the selection
+        normal! o
+        call s:moveWhole('w', v:false)
+      End
+      It 'b'
+        " move the start of the selection
+        normal! G$V
+        call s:moveWhole('b', v:false)
+        " move the end of the selection
+        normal! o
+        call s:moveWhole('b', v:true)
+      End
+      It 'e'
+        " move the end of the selection
+        normal! gg0V
+        call s:moveWhole('e', v:true)
+        " move the start of the selection
+        normal! o
+        call s:moveWhole('e', v:false)
+      End
+      It 'ge'
+        " move the start of the selection
+        normal! G$V
+        call s:moveWhole('ge', v:false)
+        " move the end of the selection
+        normal! o
+        call s:moveWhole('ge', v:true)
+      End
+    End
+    Context blockwise - <C-v>
+      After
         call g:Expect(mode()).to_equal("\<C-v>")
       End
       It 'w'

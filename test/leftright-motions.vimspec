@@ -18,7 +18,7 @@ Context motions simply move the cursor
   def s:moveWhole(motion: string, isExSelEnd = v:false)
     # move forward from the current position to the end of the buffer, or backward to the start
     # @param {'home' | 'end'} motion
-    # @param {bool=} isExSelEnd - whether the cursor is the end of the exclusive selection
+    # @param {bool=} isExSelEnd - whether the cursor is at the end of the exclusive selection
     const isForward = motion ==# 'end'
     const keyToMove = "\<Plug>(craftyjump-" .. motion .. ')'
     const GetIndices = (lnum, skipInitPos) => {
@@ -42,25 +42,28 @@ Context motions simply move the cursor
       set columns&
     End
     Context in normal mode
-      It moves backward using 'home' from the last line
+      It moves backward using '<home>' from the last line
         normal! G$
         call s:moveWhole('home')
       End
-      It moves forward using 'end' from the first line
+      It moves forward using '<end>' from the first line
         normal! gg0
         call s:moveWhole('end')
       End
     End
-    Context in visual mode
-      Context [v] characterwise (inclusive)
-        Before
-          set selection=inclusive
-        End
-        After
-          call g:Expect(&selection).to_equal('inclusive')
-          call g:Expect(mode()).to_equal('v')
-        End
-        It 'home'
+    Context in visual mode (when &selection is 'inclusive')
+      Before all
+        set selection=inclusive
+      End
+      After all
+        call g:Expect(&selection).to_equal('inclusive')
+        set selection&
+      End
+      Context characterwise - v
+      After
+        call g:Expect(mode()).to_equal('v')
+      End
+        It '<home>'
           " move the start of the selection
           normal! G$v
           call s:moveWhole('home', v:false)
@@ -68,7 +71,7 @@ Context motions simply move the cursor
           normal! o
           call s:moveWhole('home', v:false)
         End
-        It 'end'
+        It '<end>'
           " move the end of the selection
           normal! gg0v
           call s:moveWhole('end', v:false)
@@ -77,40 +80,11 @@ Context motions simply move the cursor
           call s:moveWhole('end', v:false)
         End
       End
-      Context [v] characterwise (exclusive)
-        Before
-          set selection=exclusive
-        End
+      Context linewise - V
         After
-          call g:Expect(&selection).to_equal('exclusive')
-          call g:Expect(mode()).to_equal('v')
-        End
-        It 'home'
-          " move the start of the selection
-          normal! G$v
-          call s:moveWhole('home', v:false)
-          " move the end of the selection
-          normal! o
-          call s:moveWhole('home', v:true)
-        End
-        It 'end'
-          " move the end of the selection
-          normal! gg0v
-          call s:moveWhole('end', v:true)
-          " move the start of the selection
-          normal! o
-          call s:moveWhole('end', v:false)
-        End
-      End
-      Context [V] linewise (inclusive)
-        Before
-          set selection=inclusive
-        End
-        After
-          call g:Expect(&selection).to_equal('inclusive')
           call g:Expect(mode()).to_equal('V')
         End
-        It 'home'
+        It '<home>'
           " move the start of the selection
           normal! G$V
           call s:moveWhole('home', v:false)
@@ -118,7 +92,7 @@ Context motions simply move the cursor
           normal! o
           call s:moveWhole('home', v:false)
         End
-        It 'end'
+        It '<end>'
           " move the end of the selection
           normal! gg0V
           call s:moveWhole('end', v:false)
@@ -127,40 +101,11 @@ Context motions simply move the cursor
           call s:moveWhole('end', v:false)
         End
       End
-      Context [V] linewise (exclusive)
-        Before
-          set selection=exclusive
-        End
+      Context blockwise - <C-v>
         After
-          call g:Expect(&selection).to_equal('exclusive')
-          call g:Expect(mode()).to_equal('V')
-        End
-        It 'home'
-          " move the start of the selection
-          normal! G$V
-          call s:moveWhole('home', v:false)
-          " move the end of the selection
-          normal! o
-          call s:moveWhole('home', v:true)
-        End
-        It 'end'
-          " move the end of the selection
-          normal! gg0V
-          call s:moveWhole('end', v:true)
-          " move the start of the selection
-          normal! o
-          call s:moveWhole('end', v:false)
-        End
-      End
-      Context [<C-v>] blockwise (inclusive)
-        Before
-          set selection=inclusive
-        End
-        After
-          call g:Expect(&selection).to_equal('inclusive')
           call g:Expect(mode()).to_equal("\<C-v>")
         End
-        It 'home'
+        It '<home>'
           " move the start of the selection
           execute "normal! G$\<C-v>"
           call s:moveWhole('home', v:false)
@@ -168,7 +113,7 @@ Context motions simply move the cursor
           normal! o
           call s:moveWhole('home', v:false)
         End
-        It 'end'
+        It '<end>'
           " move the end of the selection
           execute "normal! gg0\<C-v>"
           call s:moveWhole('end', v:false)
@@ -177,15 +122,62 @@ Context motions simply move the cursor
           call s:moveWhole('end', v:false)
         End
       End
-      Context [<C-v>] blockwise (exclusive)
-        Before
-          set selection=exclusive
-        End
+    End
+    Context in visual mode (when &selection is 'exclusive')
+      Before all
+        set selection=exclusive
+      End
+      After all
+        call g:Expect(&selection).to_equal('exclusive')
+        set selection&
+      End
+      Context characterwise - v
         After
-          call g:Expect(&selection).to_equal('exclusive')
+          call g:Expect(mode()).to_equal('v')
+        End
+        It '<home>'
+          " move the start of the selection
+          normal! G$v
+          call s:moveWhole('home', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('home', v:true)
+        End
+        It '<end>'
+          " move the end of the selection
+          normal! gg0v
+          call s:moveWhole('end', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('end', v:false)
+        End
+      End
+      Context linewise - V
+        After
+          call g:Expect(mode()).to_equal('V')
+        End
+        It '<home>'
+          " move the start of the selection
+          normal! G$V
+          call s:moveWhole('home', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('home', v:true)
+        End
+        It '<end>'
+          " move the end of the selection
+          normal! gg0V
+          call s:moveWhole('end', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('end', v:false)
+        End
+      End
+      Context blockwise - <C-v>
+        After
           call g:Expect(mode()).to_equal("\<C-v>")
         End
-        It 'home'
+        It '<home>'
           " move the start of the selection
           execute "normal! G$\<C-v>"
           call s:moveWhole('home', v:false)
@@ -193,7 +185,7 @@ Context motions simply move the cursor
           normal! o
           call s:moveWhole('home', v:true)
         End
-        It 'end'
+        It '<end>'
           " move the end of the selection
           execute "normal! gg0\<C-v>"
           call s:moveWhole('end', v:true)
@@ -209,25 +201,28 @@ Context motions simply move the cursor
       set nowrap
     End
     Context in normal mode
-      It moves backward using 'home' from the last line
+      It moves backward using '<home>' from the last line
         normal! G$
         call s:moveWhole('home')
       End
-      It moves forward using 'end' from the first line
+      It moves forward using '<end>' from the first line
         normal! gg0
         call s:moveWhole('end')
       End
     End
-    Context in visual mode
-      Context [v] characterwise (inclusive)
-        Before
-          set selection=inclusive
-        End
+    Context in visual mode (when &selection is 'inclusive')
+      Before all
+        set selection=inclusive
+      End
+      After all
+        call g:Expect(&selection).to_equal('inclusive')
+        set selection&
+      End
+      Context characterwise - v
         After
-          call g:Expect(&selection).to_equal('inclusive')
           call g:Expect(mode()).to_equal('v')
         End
-        It 'home'
+        It '<home>'
           " move the start of the selection
           normal! G$v
           call s:moveWhole('home', v:false)
@@ -235,7 +230,7 @@ Context motions simply move the cursor
           normal! o
           call s:moveWhole('home', v:false)
         End
-        It 'end'
+        It '<end>'
           " move the end of the selection
           normal! gg0v
           call s:moveWhole('end', v:false)
@@ -244,40 +239,11 @@ Context motions simply move the cursor
           call s:moveWhole('end', v:false)
         End
       End
-      Context [v] characterwise (exclusive)
-        Before
-          set selection=exclusive
-        End
+      Context linewise - V
         After
-          call g:Expect(&selection).to_equal('exclusive')
-          call g:Expect(mode()).to_equal('v')
-        End
-        It 'home'
-          " move the start of the selection
-          normal! G$v
-          call s:moveWhole('home', v:false)
-          " move the end of the selection
-          normal! o
-          call s:moveWhole('home', v:true)
-        End
-        It 'end'
-          " move the end of the selection
-          normal! gg0v
-          call s:moveWhole('end', v:true)
-          " move the start of the selection
-          normal! o
-          call s:moveWhole('end', v:false)
-        End
-      End
-      Context [V] linewise (inclusive)
-        Before
-          set selection=inclusive
-        End
-        After
-          call g:Expect(&selection).to_equal('inclusive')
           call g:Expect(mode()).to_equal('V')
         End
-        It 'home'
+        It '<home>'
           " move the start of the selection
           normal! G$V
           call s:moveWhole('home', v:false)
@@ -285,7 +251,7 @@ Context motions simply move the cursor
           normal! o
           call s:moveWhole('home', v:false)
         End
-        It 'end'
+        It '<end>'
           " move the end of the selection
           normal! gg0V
           call s:moveWhole('end', v:false)
@@ -294,40 +260,11 @@ Context motions simply move the cursor
           call s:moveWhole('end', v:false)
         End
       End
-      Context [V] linewise (exclusive)
-        Before
-          set selection=exclusive
-        End
+      Context blockwise - <C-v>
         After
-          call g:Expect(&selection).to_equal('exclusive')
-          call g:Expect(mode()).to_equal('V')
-        End
-        It 'home'
-          " move the start of the selection
-          normal! G$V
-          call s:moveWhole('home', v:false)
-          " move the end of the selection
-          normal! o
-          call s:moveWhole('home', v:true)
-        End
-        It 'end'
-          " move the end of the selection
-          normal! gg0V
-          call s:moveWhole('end', v:true)
-          " move the start of the selection
-          normal! o
-          call s:moveWhole('end', v:false)
-        End
-      End
-      Context [<C-v>] blockwise (inclusive)
-        Before
-          set selection=inclusive
-        End
-        After
-          call g:Expect(&selection).to_equal('inclusive')
           call g:Expect(mode()).to_equal("\<C-v>")
         End
-        It 'home'
+        It '<home>'
           " move the start of the selection
           execute "normal! G$\<C-v>"
           call s:moveWhole('home', v:false)
@@ -335,7 +272,7 @@ Context motions simply move the cursor
           normal! o
           call s:moveWhole('home', v:false)
         End
-        It 'end'
+        It '<end>'
           " move the end of the selection
           execute "normal! gg0\<C-v>"
           call s:moveWhole('end', v:false)
@@ -344,15 +281,62 @@ Context motions simply move the cursor
           call s:moveWhole('end', v:false)
         End
       End
-      Context [<C-v>] blockwise (exclusive)
-        Before
-          set selection=exclusive
-        End
+    End
+    Context in visual mode (when &selection is 'exclusive')
+      Before all
+        set selection=exclusive
+      End
+      After all
+        call g:Expect(&selection).to_equal('exclusive')
+        set selection&
+      End
+      Context characterwise - v
         After
-          call g:Expect(&selection).to_equal('exclusive')
+          call g:Expect(mode()).to_equal('v')
+        End
+        It '<home>'
+          " move the start of the selection
+          normal! G$v
+          call s:moveWhole('home', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('home', v:true)
+        End
+        It '<end>'
+          " move the end of the selection
+          normal! gg0v
+          call s:moveWhole('end', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('end', v:false)
+        End
+      End
+      Context linewise - V
+        After
+          call g:Expect(mode()).to_equal('V')
+        End
+        It '<home>'
+          " move the start of the selection
+          normal! G$V
+          call s:moveWhole('home', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('home', v:true)
+        End
+        It '<end>'
+          " move the end of the selection
+          normal! gg0V
+          call s:moveWhole('end', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('end', v:false)
+        End
+      End
+      Context blockwise - <C-v>
+        After
           call g:Expect(mode()).to_equal("\<C-v>")
         End
-        It 'home'
+        It '<home>'
           " move the start of the selection
           execute "normal! G$\<C-v>"
           call s:moveWhole('home', v:false)
@@ -360,7 +344,7 @@ Context motions simply move the cursor
           normal! o
           call s:moveWhole('home', v:true)
         End
-        It 'end'
+        It '<end>'
           " move the end of the selection
           execute "normal! gg0\<C-v>"
           call s:moveWhole('end', v:true)
@@ -390,7 +374,7 @@ Context motions are used after operators
     After all
       set columns&
     End
-    Context d{motion} - delete words
+    Context d{motion} - delete
       It 'd<home>' (exclusive)
         normal! G$
         " delete to first characters and repeat
@@ -439,7 +423,7 @@ Context motions are used after operators
         call s:dotrepeat('')
       End
     End
-    Context c{motion} - change words
+    Context c{motion} - change
       " after exiting insert mode, the cursor position shifts one to the left
       It 'c<Home>' (exclusive)
         normal! G$
@@ -491,7 +475,7 @@ Context motions are used after operators
     Before all
       set nowrap
     End
-    Context d{motion} - delete words
+    Context d{motion} - delete
       It 'd<home>' (exclusive)
         normal! G$
         " delete to first characters and repeat
@@ -523,7 +507,7 @@ Context motions are used after operators
         call s:dotrepeat('')
       End
     End
-    Context c{motion} - change words
+    Context c{motion} - change
       " after exiting insert mode, the cursor position shifts one to the left
       It 'c<Home>' (exclusive)
         normal! G$
