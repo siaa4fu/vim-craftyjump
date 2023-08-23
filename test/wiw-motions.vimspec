@@ -2,7 +2,7 @@ scriptencoding utf-8
 " the text 'themis#suite()' is required to run test#viml#themis#test_file()
 Describe wiw-motions
 
-let s:samplelines = readfile('test/sample_for_wiw_motions')
+let s:samplelines = readfile('test/wiw_motions.sample')
 
 Context motions simply move the cursor
   Before

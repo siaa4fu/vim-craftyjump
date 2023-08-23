@@ -2,7 +2,7 @@ scriptencoding utf-8
 " the text 'themis#suite()' is required to run test#viml#themis#test_file()
 Describe leftright-motions
 
-let s:samplelines = readfile('test/sample_for_leftright_motions')
+let s:samplelines = readfile('test/leftright_motions.sample')
 def s:GoToPrevLine()
   execute 'normal!' &wrap ? 'gkg$' : 'k$ze'
 enddef
