@@ -226,15 +226,12 @@ Context motions are used after operators
       execute "normal d\<Plug>(craftyjump-end)"
       call g:Expect(getline('.')).to_equal('')
       " next line
-      execute "normal d2\<Plug>(craftyjump-end)"
-      call g:Expect(getline('.')).to_equal('     ')
-      execute "normal d\<Plug>(craftyjump-end)"
-      call g:Expect(getline('.')).to_equal('')
+      call s:dotrepeat('     123456789012345678901234567890123456789012345678901234567890     ')
+      call s:dotrepeat('     ')
       " next line
-      execute "normal d2\<Plug>(craftyjump-end)"
-      call g:Expect(getline('.')).to_equal('          ')
-      execute "normal d\<Plug>(craftyjump-end)"
-      call g:Expect(getline('.')).to_equal('')
+      call s:dotrepeat('123456789012345678901234567890123456789012345678901234567890          ')
+      call s:dotrepeat('          ')
+      call s:dotrepeat('')
     End
   End
   Context c{motion} - change words
@@ -264,15 +261,12 @@ Context motions are used after operators
       execute "normal c\<Plug>(craftyjump-end)\<Esc>"
       call g:Expect(getline('.')).to_equal('')
       " next line
-      execute "normal c2\<Plug>(craftyjump-end)\<Esc>"
-      call g:Expect(getline('.')).to_equal('     ')
-      execute "normal c\<Plug>(craftyjump-end)\<Esc>"
-      call g:Expect(getline('.')).to_equal('')
+      call s:dotrepeat('     123456789012345678901234567890123456789012345678901234567890     ')
+      call s:dotrepeat('     ')
       " next line
-      execute "normal c2\<Plug>(craftyjump-end)\<Esc>"
-      call g:Expect(getline('.')).to_equal('          ')
-      execute "normal c\<Plug>(craftyjump-end)\<Esc>"
-      call g:Expect(getline('.')).to_equal('')
+      call s:dotrepeat('123456789012345678901234567890123456789012345678901234567890          ')
+      call s:dotrepeat('          ')
+      call s:dotrepeat('')
     End
   End
 End
