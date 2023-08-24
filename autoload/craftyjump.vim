@@ -16,7 +16,7 @@ def IsExclusiveSelEnd(pos: list<number>): bool # {{{
     const vpos = getcharpos('v')
     return vpos[1] == pos[1] && vpos[2] < pos[2] || vpos[1] < pos[1]
   endif
-  return v:false
+  return false
 enddef # }}}
 
 def IsForwardMotion(motion: string): bool # {{{
@@ -24,9 +24,9 @@ def IsForwardMotion(motion: string): bool # {{{
   # @return {bool} - return true if the motion is forward, or false if backward
   var isForward: bool
   if motion ==# 'w' || motion ==# 'e'
-    isForward = v:true
+    isForward = true
   elseif motion ==# 'b' || motion ==# 'ge'
-    isForward = v:false
+    isForward = false
   else
     echoerr 'Unsupported motion:' motion
   endif
@@ -37,13 +37,13 @@ def IsExclusiveMotion(motion: string): bool # {{{
   # @return {bool} - return true if the motion is exclusive, or false if inclusive
   var isExMotion: bool
   if motion ==# 'w' || motion ==# 'b'
-    isExMotion = v:true
+    isExMotion = true
   elseif motion ==# 'e' || motion ==# 'ge'
-    isExMotion = v:false
+    isExMotion = false
   elseif motion ==# "\<home>"
-    isExMotion = v:true
+    isExMotion = true
   elseif motion ==# "\<end>"
-    isExMotion = v:false
+    isExMotion = false
   else
     echoerr 'Unsupported motion:' motion
   endif
@@ -57,7 +57,7 @@ def DoSingleMotion(motion: string): bool # {{{
       || motion ==# '^' || motion ==# 'g_'
       || motion ==# '0' || motion ==# 'hg0' || motion ==# '$' || motion ==# 'lg$'
     execute 'normal!' motion
-    isMoved = v:true
+    isMoved = true
   else
     echoerr 'Unsupported motion:' motion
   endif
@@ -87,7 +87,7 @@ def DoMotion(motion: string, Move: func(number): bool, SpecialMove: func(list<nu
   #   the function that adjusts the cursor position after moving in operator-pending mode
   #     @param {list<number>} - the cursor position before moving returned by getcursorcharpos()
   const cnt = v:count1
-  const mode = mode(v:true)
+  const mode = mode(true)
   if mode =~# '^no'
     # set the operator to be linewise, characterwise or blockwise (`forced-motion`)
     execute 'normal!' (mode[2] ?? 'v')
@@ -140,14 +140,14 @@ def MoveToKwdChar(motion: string, cnt: number): bool # {{{
     prev.line = getline(prev.pos[1])
     prev.isExSelEnd = IsExclusiveSelEnd(prev.pos)
     prev.fixPosE = motion ==# 'e' && prev.isExSelEnd
-    while v:true
+    while true
       # make the motion 'e' move from the original position if the cursor is at the end of the exclusive selection
       if prev.fixPosE | execute 'normal! h' | endif
       isMoved = DoSingleMotion(motion)
       final pos = getcursorcharpos()
       if prev.pos == pos
         # abort if the cursor could not move
-        isMoved = v:false
+        isMoved = false
         break
       endif
       const line = getline(pos[1])
@@ -249,7 +249,7 @@ def MoveToFirstChar(cnt: number): bool # {{{
   cols.cursor = charcol('.')
   cols.start = 1
   cols.firstNonBlank = cols.start + strcharlen(matchstr(getline('.'), '^\s*'))
-  if &wrap || get(g:, 'craftyjump#multistep_homeend', v:false)
+  if &wrap || get(g:, 'craftyjump#multistep_homeend', false)
     # the cursor moves sequentially to 'g0' positions, which are first or leftmost characters of the current screen line,
     # then cycles through the '^' and '0' positions
     if cols.firstNonBlank < cols.cursor
@@ -289,7 +289,7 @@ def MoveToLastChar(cnt: number): bool # {{{
   cols.cursor = charcol('.')
   cols.end = charcol('$') - 1
   cols.lastNonBlank = cols.end - strcharlen(matchstr(getline('.'), '\s*$'))
-  if &wrap || get(g:, 'craftyjump#multistep_homeend', v:false)
+  if &wrap || get(g:, 'craftyjump#multistep_homeend', false)
     # the cursor moves sequentially to 'g$' positions, which are last or rightmost characters of the current screen line,
     # then cycles through the 'g_' and '$' positions
     if cols.cursor < cols.lastNonBlank

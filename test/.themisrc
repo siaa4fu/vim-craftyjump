@@ -78,7 +78,7 @@ def g:MoveInLine(lnum: number, indices: list<number>, keyToMove: string, isForwa
     # move the cursor and check if the movement to each index is correct
     for index in indices
       execute 'normal' keyToMove
-      g:Expect(v:null).to_be_at_position([lnum, index])
+      g:Expect(null).to_be_at_position([lnum, index])
     endfor
   endif
   return lnum + (isForward ? 1 : -1)

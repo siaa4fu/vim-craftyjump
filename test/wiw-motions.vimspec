@@ -9,7 +9,7 @@ Context motions simply move the cursor
     " use line 1 to 3
     call InitTestBuffer(s:samplelines[0 : 2])
   End
-  def s:moveWhole(motion: string, isExSelEnd = v:false)
+  def s:moveWhole(motion: string, isExSelEnd = false)
     # move forward from the current position to the end of the buffer, or backward to the start
     # @param {'w' | 'b' | 'e' | 'ge'} motion
     # @param {bool=} isExSelEnd - whether the cursor is at the end of the exclusive selection
@@ -21,9 +21,9 @@ Context motions simply move the cursor
     }
     const NotAtBufferEdge = isForward ? (lnum) => lnum <= line('$') : (lnum) => lnum > 0
     var lnum = line('.')
-    lnum = g:MoveInLine(lnum, GetIndices(lnum, v:true), keyToMove, isForward)
+    lnum = g:MoveInLine(lnum, GetIndices(lnum, true), keyToMove, isForward)
     while NotAtBufferEdge(lnum)
-      lnum = g:MoveInLine(lnum, GetIndices(lnum, v:false), keyToMove, isForward)
+      lnum = g:MoveInLine(lnum, GetIndices(lnum, false), keyToMove, isForward)
     endwhile
   enddef
   Context in normal mode
