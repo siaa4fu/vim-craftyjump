@@ -362,10 +362,6 @@ Context motions are used after operators
     " use line 1 to 3
     call InitTestBuffer(s:samplelines[0 : 2])
   End
-  function! s:dotrepeat(expect)
-    normal! .
-    call g:Expect(getline('.')).to_equal(a:expect)
-  endfunction
   Context wrap (when &wrap is on)
     Before all
       let &columns = 20
@@ -380,47 +376,47 @@ Context motions are used after operators
         " delete to first characters and repeat
         execute "normal d\<Plug>(craftyjump-home)"
         call g:Expect(getline('.')).to_equal('123456789012345678901234567890123456789012345678901234567890 ')
-        call s:dotrepeat('1234567890123456789012345678901234567890 ')
-        call s:dotrepeat('12345678901234567890 ')
-        call s:dotrepeat(' ')
-        call s:dotrepeat('')
+        call g:DotRepeat('1234567890123456789012345678901234567890 ')
+        call g:DotRepeat('12345678901234567890 ')
+        call g:DotRepeat(' ')
+        call g:DotRepeat('')
         " previous line
         call s:GoToPrevLine()
-        call s:dotrepeat('     1234567890123456789012345678901234567890123456789012345 ')
-        call s:dotrepeat('     12345678901234567890123456789012345 ')
-        call s:dotrepeat('     123456789012345 ')
-        call s:dotrepeat('      ')
-        call s:dotrepeat(' ')
-        call s:dotrepeat('')
+        call g:DotRepeat('     1234567890123456789012345678901234567890123456789012345 ')
+        call g:DotRepeat('     12345678901234567890123456789012345 ')
+        call g:DotRepeat('     123456789012345 ')
+        call g:DotRepeat('      ')
+        call g:DotRepeat(' ')
+        call g:DotRepeat('')
         " previous line
         call s:GoToPrevLine()
-        call s:dotrepeat('          123456789012345678901234567890123456789012345678900')
-        call s:dotrepeat('          1234567890123456789012345678900')
-        call s:dotrepeat('          12345678900')
-        call s:dotrepeat('          0')
-        call s:dotrepeat('0')
-        call s:dotrepeat('')
+        call g:DotRepeat('          123456789012345678901234567890123456789012345678900')
+        call g:DotRepeat('          1234567890123456789012345678900')
+        call g:DotRepeat('          12345678900')
+        call g:DotRepeat('          0')
+        call g:DotRepeat('0')
+        call g:DotRepeat('')
       End
       It 'd<end>' (inclusive)
         normal! gg0
         " delete to last characters and repeat
         execute "normal d\<Plug>(craftyjump-end)"
         call g:Expect(getline('.')).to_equal('12345678901234567890123456789012345678901234567890')
-        call s:dotrepeat('123456789012345678901234567890')
-        call s:dotrepeat('1234567890')
-        call s:dotrepeat('')
+        call g:DotRepeat('123456789012345678901234567890')
+        call g:DotRepeat('1234567890')
+        call g:DotRepeat('')
         " next line
         call s:GoToNextLine()
-        call s:dotrepeat('678901234567890123456789012345678901234567890     ')
-        call s:dotrepeat('6789012345678901234567890     ')
-        call s:dotrepeat('67890     ')
-        call s:dotrepeat('     ')
+        call g:DotRepeat('678901234567890123456789012345678901234567890     ')
+        call g:DotRepeat('6789012345678901234567890     ')
+        call g:DotRepeat('67890     ')
+        call g:DotRepeat('     ')
         " next line
-        call s:dotrepeat('123456789012345678901234567890123456789012345678901234567890          ')
-        call s:dotrepeat('1234567890123456789012345678901234567890          ')
-        call s:dotrepeat('12345678901234567890          ')
-        call s:dotrepeat('          ')
-        call s:dotrepeat('')
+        call g:DotRepeat('123456789012345678901234567890123456789012345678901234567890          ')
+        call g:DotRepeat('1234567890123456789012345678901234567890          ')
+        call g:DotRepeat('12345678901234567890          ')
+        call g:DotRepeat('          ')
+        call g:DotRepeat('')
       End
     End
     Context c{motion} - change
@@ -430,44 +426,44 @@ Context motions are used after operators
         " change to first characters and repeat
         execute "normal c\<Plug>(craftyjump-home)\<Esc>"
         call g:Expect(getline('.')).to_equal('123456789012345678901234567890123456789012345678901234567890 ')
-        call s:dotrepeat('12345678901234567890123456789012345678900 ')
-        call s:dotrepeat('1234567890123456789000 ')
-        call s:dotrepeat('000 ')
+        call g:DotRepeat('12345678901234567890123456789012345678900 ')
+        call g:DotRepeat('1234567890123456789000 ')
+        call g:DotRepeat('000 ')
         " previous line
         call s:GoToPrevLine()
-        call s:dotrepeat('     1234567890123456789012345678901234567890123456789012345 ')
-        call s:dotrepeat('     123456789012345678901234567890123455 ')
-        call s:dotrepeat('     12345678901234555 ')
-        call s:dotrepeat('     555 ')
-        call s:dotrepeat(' 555 ')
+        call g:DotRepeat('     1234567890123456789012345678901234567890123456789012345 ')
+        call g:DotRepeat('     123456789012345678901234567890123455 ')
+        call g:DotRepeat('     12345678901234555 ')
+        call g:DotRepeat('     555 ')
+        call g:DotRepeat(' 555 ')
         " previous line
         call s:GoToPrevLine()
-        call s:dotrepeat('          123456789012345678901234567890123456789012345678900')
-        call s:dotrepeat('          12345678901234567890123456789000')
-        call s:dotrepeat('          1234567890000')
-        call s:dotrepeat('          0000')
-        call s:dotrepeat(' 0000')
+        call g:DotRepeat('          123456789012345678901234567890123456789012345678900')
+        call g:DotRepeat('          12345678901234567890123456789000')
+        call g:DotRepeat('          1234567890000')
+        call g:DotRepeat('          0000')
+        call g:DotRepeat(' 0000')
       End
       It 'c<end>' (inclusive)
         normal! gg0
         " change to last characters and repeat
         execute "normal c\<Plug>(craftyjump-end)\<Esc>"
         call g:Expect(getline('.')).to_equal('12345678901234567890123456789012345678901234567890')
-        call s:dotrepeat('123456789012345678901234567890')
-        call s:dotrepeat('1234567890')
-        call s:dotrepeat('')
+        call g:DotRepeat('123456789012345678901234567890')
+        call g:DotRepeat('1234567890')
+        call g:DotRepeat('')
         " next line
         call s:GoToNextLine()
-        call s:dotrepeat('678901234567890123456789012345678901234567890     ')
-        call s:dotrepeat('6789012345678901234567890     ')
-        call s:dotrepeat('67890     ')
-        call s:dotrepeat('     ')
+        call g:DotRepeat('678901234567890123456789012345678901234567890     ')
+        call g:DotRepeat('6789012345678901234567890     ')
+        call g:DotRepeat('67890     ')
+        call g:DotRepeat('     ')
         " next line
-        call s:dotrepeat('123456789012345678901234567890123456789012345678901234567890          ')
-        call s:dotrepeat('1234567890123456789012345678901234567890          ')
-        call s:dotrepeat('12345678901234567890          ')
-        call s:dotrepeat('          ')
-        call s:dotrepeat('')
+        call g:DotRepeat('123456789012345678901234567890123456789012345678901234567890          ')
+        call g:DotRepeat('1234567890123456789012345678901234567890          ')
+        call g:DotRepeat('12345678901234567890          ')
+        call g:DotRepeat('          ')
+        call g:DotRepeat('')
       End
     End
   End
@@ -481,17 +477,17 @@ Context motions are used after operators
         " delete to first characters and repeat
         execute "normal d\<Plug>(craftyjump-home)"
         call g:Expect(getline('.')).to_equal(' ')
-        call s:dotrepeat('')
+        call g:DotRepeat('')
         " previous line
         normal! k$ze
-        call s:dotrepeat('      ')
-        call s:dotrepeat(' ')
-        call s:dotrepeat('')
+        call g:DotRepeat('      ')
+        call g:DotRepeat(' ')
+        call g:DotRepeat('')
         " previous line
         normal! k$ze
-        call s:dotrepeat('          0')
-        call s:dotrepeat('0')
-        call s:dotrepeat('')
+        call g:DotRepeat('          0')
+        call g:DotRepeat('0')
+        call g:DotRepeat('')
       End
       It 'd<end>' (inclusive)
         normal! gg0
@@ -500,11 +496,11 @@ Context motions are used after operators
         call g:Expect(getline('.')).to_equal('')
         " next line
         normal! j0zs
-        call s:dotrepeat('     ')
+        call g:DotRepeat('     ')
         " next line
-        call s:dotrepeat('123456789012345678901234567890123456789012345678901234567890          ')
-        call s:dotrepeat('          ')
-        call s:dotrepeat('')
+        call g:DotRepeat('123456789012345678901234567890123456789012345678901234567890          ')
+        call g:DotRepeat('          ')
+        call g:DotRepeat('')
       End
     End
     Context c{motion} - change
@@ -514,19 +510,19 @@ Context motions are used after operators
         " change to first characters and repeat
         execute "normal c\<Plug>(craftyjump-home)\<Esc>"
         call g:Expect(getline('.')).to_equal(' ')
-        call s:dotrepeat('')
+        call g:DotRepeat('')
         " previous line
         normal! k$ze
-        call s:dotrepeat('      ')
-        call s:dotrepeat('  ')
-        call s:dotrepeat(' ')
-        call s:dotrepeat('')
+        call g:DotRepeat('      ')
+        call g:DotRepeat('  ')
+        call g:DotRepeat(' ')
+        call g:DotRepeat('')
         " previous line
         normal! k$ze
-        call s:dotrepeat('          0')
-        call s:dotrepeat(' 0')
-        call s:dotrepeat('0')
-        call s:dotrepeat('')
+        call g:DotRepeat('          0')
+        call g:DotRepeat(' 0')
+        call g:DotRepeat('0')
+        call g:DotRepeat('')
       End
       It 'c<end>' (inclusive)
         normal! gg0
@@ -535,11 +531,11 @@ Context motions are used after operators
         call g:Expect(getline('.')).to_equal('')
         " next line
         normal! j0zs
-        call s:dotrepeat('     ')
+        call g:DotRepeat('     ')
         " next line
-        call s:dotrepeat('123456789012345678901234567890123456789012345678901234567890          ')
-        call s:dotrepeat('          ')
-        call s:dotrepeat('')
+        call g:DotRepeat('123456789012345678901234567890123456789012345678901234567890          ')
+        call g:DotRepeat('          ')
+        call g:DotRepeat('')
       End
     End
   End
