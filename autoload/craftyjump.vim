@@ -1,11 +1,6 @@
 vim9script
 scriptencoding utf-8
 
-# `substring` `vim9-string-index`
-# in vim9script, substrings are sliced using character indices and include coposing characters
-# (therefore, both single-byte and multi-byte characters are supported)
-# e.g., '12345'[1:3] is '234' (indices is inclusive)
-
 def IsCharUnderCursor(regexp: string, pos: list<number>, line = getline(pos[1])): bool # {{{
   # @param {string} regexp - regexp to check if the character under the cursor matches
   # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
