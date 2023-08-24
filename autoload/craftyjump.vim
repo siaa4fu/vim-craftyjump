@@ -249,7 +249,7 @@ def MoveToFirstChar(cnt: number): bool # {{{
   cols.cursor = charcol('.')
   cols.start = 1
   cols.firstNonBlank = cols.start + strcharlen(matchstr(getline('.'), '^\s*'))
-  if &wrap
+  if &wrap || get(g:, 'craftyjump#multistep_homeend', v:false)
     # the cursor moves sequentially to 'g0' positions, which are first or leftmost characters of the current screen line,
     # then cycles through the '^' and '0' positions
     if cols.firstNonBlank < cols.cursor
@@ -289,7 +289,7 @@ def MoveToLastChar(cnt: number): bool # {{{
   cols.cursor = charcol('.')
   cols.end = charcol('$') - 1
   cols.lastNonBlank = cols.end - strcharlen(matchstr(getline('.'), '\s*$'))
-  if &wrap
+  if &wrap || get(g:, 'craftyjump#multistep_homeend', v:false)
     # the cursor moves sequentially to 'g$' positions, which are last or rightmost characters of the current screen line,
     # then cycles through the 'g_' and '$' positions
     if cols.cursor < cols.lastNonBlank
