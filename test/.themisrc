@@ -4,6 +4,29 @@ scriptencoding utf-8
 themis#option('runtimepath', fnamemodify(expand('<sfile>'), ':h:h'))
 const g:Expect = themis#helper('expect')
 
+# @param {list} expect - [lnum, charcol] of expected position
+#   the column number is a 1-based character index, not a byte index
+#   alternatively, the column number can be specified using following strings
+#     '0'  - the first character of the line
+#     '^'  - the first non-blank character of the line
+#     '$'  - the last character of the line
+#     'g_' - the last non-blank character of the line
+themis#helper#expect#define_matcher('to_be_at_position',
+  (_, expect) => {
+    const pos = getcursorcharpos()
+    var charcol: number
+    if type(expect[1]) == v:t_string
+      # temporarily move the cursor to the expected position
+      execute 'normal!' expect[0] .. 'gg' .. expect[1]
+      charcol = charcol('.')
+      setcharpos('.', pos)
+    endif
+    return pos[1 : 2] ==# [expect[0], charcol ?? expect[1]]
+  },
+  (not, name, _, expect) =>
+    'Expected the cursor position ' .. (not ? 'not ' : '') .. 'to be at ' .. string(expect) .. '.'
+    .. ' (but ' .. string(getcursorcharpos()[1 : 2]) .. ')'
+)
 def g:DotRepeat(expect: string)
   # @param {string} expect - after repeating last command, check if the current line is equal to {expect}
   normal! .
@@ -55,32 +78,8 @@ def g:MoveInLine(lnum: number, indices: list<number>, keyToMove: string, isForwa
     # move the cursor and check if the movement to each index is correct
     for index in indices
       execute 'normal' keyToMove
-      call g:Expect(v:null).to_be_at_position([lnum, index])
+      g:Expect(v:null).to_be_at_position([lnum, index])
     endfor
   endif
   return lnum + (isForward ? 1 : -1)
 enddef
-
-# @param {list} expect - [lnum, charcol] of expected position
-#   the column number is a 1-based character index, not a byte index
-#   alternatively, the column number can be specified using following strings
-#     '0'  - the first character of the line
-#     '^'  - the first non-blank character of the line
-#     '$'  - the last character of the line
-#     'g_' - the last non-blank character of the line
-themis#helper#expect#define_matcher('to_be_at_position',
-  (_, expect) => {
-    const pos = getcursorcharpos()
-    var charcol: number
-    if type(expect[1]) == v:t_string
-      # temporarily move the cursor to the expected position
-      execute 'normal!' expect[0] .. 'gg' .. expect[1]
-      charcol = charcol('.')
-      setcharpos('.', pos)
-    endif
-    return pos[1 : 2] ==# [expect[0], charcol ?? expect[1]]
-  },
-  (not, name, _, expect) =>
-    'Expected the cursor position ' .. (not ? 'not ' : '') .. 'to be at ' .. string(expect) .. '.'
-    .. ' (but ' .. string(getcursorcharpos()[1 : 2]) .. ')'
-)
