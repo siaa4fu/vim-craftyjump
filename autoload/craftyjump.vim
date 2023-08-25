@@ -49,6 +49,24 @@ def IsExclusiveMotion(motion: string): bool # {{{
   endif
   return isExMotion
 enddef # }}}
+def GoToFoldEdge(isForward: bool, lnum: number): bool # {{{
+  # @param {bool} isForward - position the cursor at the end of the closed fold if true, the start if false
+  # @param {number} lnum - the number of the cursor line
+  # @return {bool} - whether the cursor has been positioned at the edge of the closed fold
+  var isMoved: bool
+  if isForward
+    const lastLnumInFold = foldclosedend(lnum)
+    if lastLnumInFold > -1
+      isMoved = setcursorcharpos(lastLnumInFold, charcol([lastLnumInFold, '$'])) > -1
+    endif
+  else
+    const firstLnumInFold = foldclosed(lnum)
+    if firstLnumInFold > -1
+      isMoved = setcursorcharpos(firstLnumInFold, 1) > -1
+    endif
+  endif
+  return isMoved
+enddef # }}}
 def DoSingleMotion(motion: string): bool # {{{
   # @param {'w' | 'b' | 'e' | 'ge' | '^' | 'g_' | '0' | 'hg0' | '$' | 'lg$' } motion
   # @return {bool} - whether the motion has been executed
@@ -139,15 +157,24 @@ def MoveToKwdChar(motion: string, cnt: number): bool # {{{
     prev.pos = getcursorcharpos() # [0, lnum, charcol, off, curswant]
     prev.line = getline(prev.pos[1])
     prev.isExSelEnd = IsExclusiveSelEnd(prev.pos)
-    prev.fixPosE = motion ==# 'e' && prev.isExSelEnd
     while true
-      # make the motion 'e' move from the original position if the cursor is at the end of the exclusive selection
-      if prev.fixPosE | execute 'normal! h' | endif
+      if GoToFoldEdge(isForward, prev.pos[1])
+        # go to the edge of a closed fold if the cursor is in the fold before moving
+        prev.pos = getcursorcharpos() # [0, lnum, charcol, off, curswant]
+        prev.line = getline(prev.pos[1])
+        prev.isExSelEnd = IsExclusiveSelEnd(prev.pos)
+      elseif motion ==# 'e' && prev.isExSelEnd
+        # make the motion 'e' move from the original position if the cursor is at the end of the exclusive selection
+        execute 'normal! h'
+      endif
       isMoved = DoSingleMotion(motion)
       final pos = getcursorcharpos()
       if prev.pos == pos
         # abort if the cursor could not move
         isMoved = false
+        break
+      elseif GoToFoldEdge(false, pos[1])
+        # always go to the start of a closed fold if the cursor is in the fold after moving
         break
       endif
       const line = getline(pos[1])
@@ -171,8 +198,7 @@ def MoveToKwdChar(motion: string, cnt: number): bool # {{{
       endif
       # the motion 'e' always shifts one to the right at the end of the exclusive selection
       # this may cause the next position to be skipped, which feels strange. so fix it
-      const fixPosE = motion ==# 'e' && isExSelEnd
-      if fixPosE | pos[2] -= 1 | endif
+      if motion ==# 'e' && isExSelEnd | pos[2] -= 1 | endif
       # when the cursor moved within the same line or from the edge of the line
       if IsCharUnderCursor('\k', pos, line) || IsOutsideLineEdge(pos, line, isExSelEnd)
         # stop moving if the character under the cursor was a keyword character
@@ -182,7 +208,6 @@ def MoveToKwdChar(motion: string, cnt: number): bool # {{{
       prev.pos = pos
       prev.line = line
       prev.isExSelEnd = isExSelEnd
-      prev.fixPosE = fixPosE
     endwhile
     if ! isMoved | break | endif
   endfor
