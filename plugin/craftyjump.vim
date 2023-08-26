@@ -52,3 +52,17 @@ onoremap <Plug>(craftyjump-home) <ScriptCmd><SID>craftyjump.LeftRight("\<home>")
 onoremap <Plug>(craftyjump-end)  <ScriptCmd><SID>craftyjump.LeftRight("\<end>")<CR>
 inoremap <Plug>(craftyjump-home) <ScriptCmd><SID>craftyjump.LeftRight("\<home>")<CR>
 inoremap <Plug>(craftyjump-end)  <ScriptCmd><SID>craftyjump.LeftRight("\<end>")<CR>
+
+# scrolling
+nnoremap <Plug>(craftyjump-scroll-lines-down) <ScriptCmd><SID>craftyjump.Scroll("\<C-d>")<CR>
+nnoremap <Plug>(craftyjump-scroll-lines-up)   <ScriptCmd><SID>craftyjump.Scroll("\<C-u>")<CR>
+nnoremap <Plug>(craftyjump-scroll-pages-down) <ScriptCmd><SID>craftyjump.Scroll("\<C-f>")<CR>
+nnoremap <Plug>(craftyjump-scroll-pages-up)   <ScriptCmd><SID>craftyjump.Scroll("\<C-b>")<CR>
+xnoremap <Plug>(craftyjump-scroll-lines-down) <ScriptCmd><SID>craftyjump.Scroll("\<C-d>")<CR>
+xnoremap <Plug>(craftyjump-scroll-lines-up)   <ScriptCmd><SID>craftyjump.Scroll("\<C-u>")<CR>
+xnoremap <Plug>(craftyjump-scroll-pages-down) <ScriptCmd><SID>craftyjump.Scroll("\<C-f>")<CR>
+xnoremap <Plug>(craftyjump-scroll-pages-up)   <ScriptCmd><SID>craftyjump.Scroll("\<C-b>")<CR>
+inoremap <Plug>(craftyjump-scroll-lines-down) <ScriptCmd><SID>craftyjump.Scroll("\<C-d>")<CR>
+inoremap <Plug>(craftyjump-scroll-lines-up)   <ScriptCmd><SID>craftyjump.Scroll("\<C-u>")<CR>
+inoremap <Plug>(craftyjump-scroll-pages-down) <ScriptCmd><SID>craftyjump.Scroll("\<C-f>")<CR>
+inoremap <Plug>(craftyjump-scroll-pages-up)   <ScriptCmd><SID>craftyjump.Scroll("\<C-b>")<CR>

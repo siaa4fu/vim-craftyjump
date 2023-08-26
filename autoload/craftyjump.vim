@@ -20,12 +20,14 @@ def IsExclusiveSelEnd(pos: list<number>): bool # {{{
 enddef # }}}
 
 def IsForwardMotion(motion: string): bool # {{{
-  # @param {'w' | 'b' | 'e' | 'ge'} motion
+  # @param {'w' | 'b' | 'e' | 'ge' | "\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>"} motion
   # @return {bool} - return true if the motion is forward, or false if backward
   var isForward: bool
   if motion ==# 'w' || motion ==# 'e'
+      || motion ==# "\<C-d>" || motion ==# "\<C-f>"
     isForward = true
   elseif motion ==# 'b' || motion ==# 'ge'
+      || motion ==# "\<C-u>" || motion ==# "\<C-b>"
     isForward = false
   else
     echoerr 'Unsupported motion:' motion
@@ -351,4 +353,51 @@ export def LeftRight(motion: string)
     MoveToEdgeChar = MoveToLastChar
   endif
   DoMotion(motion, MoveToEdgeChar)
+enddef
+
+def SmoothScroll(motion: string, lines: number, _) # {{{
+  # @param {"\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>"} motion
+  # @param {number} lines - the number of lines to scroll
+  const isForward = IsForwardMotion(motion)
+  var n: number
+  var keys: list<string>
+  if isForward
+    n = min([lines, line('$') - line('w$')])
+    keys = ["\<C-e>", 'gj']
+  else
+    n = min([lines, line('w0') - 1])
+    keys = ["\<C-y>", 'gk']
+  endif
+  const step = get(g:, 'craftyjump#scroll_step', 3)
+  while n > 0
+    n -= 1
+    # the cursor may move when scrolling window in the following cases
+    #   the cursor is at the first line visible in window when scrolling downward
+    #   the cursor is at the last line visible in window when scrolling upward
+    #   &scrolloff is greater than 0
+    const pos = getcursorcharpos() # [0, lnum, charcol, off, curswant]
+    execute 'normal!' keys[0]
+    if getcursorcharpos() == pos
+      # move the cursor if it still stays where it was
+      execute 'normal!' keys[1]
+    endif
+    if n % step == 0
+      redraw
+    endif
+  endwhile
+enddef # }}}
+var scrolltimerid: number
+export def Scroll(motion: string)
+  # @param {"\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>"} motion
+  var lines: number
+  if motion ==# "\<C-d>" || motion ==# "\<C-u>"
+    # scroll [count] lines or half a screen as default
+    lines = v:count > 0 ? v:count : &scroll
+  elseif motion ==# "\<C-f>" || motion ==# "\<C-b>"
+    # scroll [count] screens
+    lines = v:count1 * winheight(0)
+  endif
+  # use a timer to activate only last key input on long press
+  timer_stop(scrolltimerid) # no error even if a timer ID does not exist
+  scrolltimerid = timer_start(10, function(SmoothScroll, [motion, lines]))
 enddef
