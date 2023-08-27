@@ -385,6 +385,10 @@ def SmoothScroll(motion: string, lines: number, _) # {{{
       redraw
     endif
   endwhile
+  if &startofline
+    # move the cursor to the first non-blank character of the line
+    normal! ^
+  endif
 enddef # }}}
 var scrolltimerid: number
 export def Scroll(motion: string)
