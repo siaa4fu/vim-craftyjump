@@ -66,3 +66,11 @@ inoremap <Plug>(craftyjump-scroll-lines-down) <ScriptCmd><SID>craftyjump.Scroll(
 inoremap <Plug>(craftyjump-scroll-lines-up)   <ScriptCmd><SID>craftyjump.Scroll("\<C-u>")<CR>
 inoremap <Plug>(craftyjump-scroll-pages-down) <ScriptCmd><SID>craftyjump.Scroll("\<C-f>")<CR>
 inoremap <Plug>(craftyjump-scroll-pages-up)   <ScriptCmd><SID>craftyjump.Scroll("\<C-b>")<CR>
+
+# pattern-searches
+nnoremap <Plug>(craftyjump-search-n) <ScriptCmd><SID>craftyjump.Search('n')<CR>
+nnoremap <Plug>(craftyjump-search-N) <ScriptCmd><SID>craftyjump.Search('N')<CR>
+xnoremap <Plug>(craftyjump-search-n) <ScriptCmd><SID>craftyjump.Search('n')<CR>
+xnoremap <Plug>(craftyjump-search-N) <ScriptCmd><SID>craftyjump.Search('N')<CR>
+inoremap <Plug>(craftyjump-search-n) <ScriptCmd><SID>craftyjump.Search('n')<CR>
+inoremap <Plug>(craftyjump-search-N) <ScriptCmd><SID>craftyjump.Search('N')<CR>

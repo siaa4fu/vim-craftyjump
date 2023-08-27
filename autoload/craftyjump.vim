@@ -20,7 +20,7 @@ def IsExclusiveSelEnd(pos: list<number>): bool # {{{
 enddef # }}}
 
 def IsForwardMotion(motion: string): bool # {{{
-  # @param {'w' | 'b' | 'e' | 'ge' | "\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>"} motion
+  # @param {'w' | 'b' | 'e' | 'ge' | "\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>" | 'n' | 'N'} motion
   # @return {bool} - return true if the motion is forward, or false if backward
   var isForward: bool
   if motion ==# 'w' || motion ==# 'e'
@@ -29,6 +29,8 @@ def IsForwardMotion(motion: string): bool # {{{
   elseif motion ==# 'b' || motion ==# 'ge'
       || motion ==# "\<C-u>" || motion ==# "\<C-b>"
     isForward = false
+  elseif motion ==# 'n' || motion ==# 'N'
+    isForward = motion ==# (v:searchforward ? 'n' : 'N')
   else
     echoerr 'Unsupported motion:' motion
   endif
@@ -70,12 +72,13 @@ def GoToFoldEdge(isForward: bool, lnum: number): bool # {{{
   return isMoved
 enddef # }}}
 def DoSingleMotion(motion: string): bool # {{{
-  # @param {'w' | 'b' | 'e' | 'ge' | '^' | 'g_' | '0' | 'hg0' | '$' | 'lg$' } motion
+  # @param {'w' | 'b' | 'e' | 'ge' | '^' | 'g_' | '0' | 'hg0' | '$' | 'lg$' | 'n' | 'N'} motion
   # @return {bool} - whether the motion has been executed
   var isMoved: bool
   if motion ==# 'w' || motion ==# 'b' || motion ==# 'e' || motion ==# 'ge'
       || motion ==# '^' || motion ==# 'g_'
       || motion ==# '0' || motion ==# 'hg0' || motion ==# '$' || motion ==# 'lg$'
+      || motion ==# 'n' || motion ==# 'N'
     execute 'normal!' motion
     isMoved = true
   else
@@ -404,4 +407,31 @@ export def Scroll(motion: string)
   # use a timer to activate only last key input on long press
   timer_stop(scrolltimerid) # no error even if a timer ID does not exist
   scrolltimerid = timer_start(10, function(SmoothScroll, [motion, lines]))
+enddef
+
+def SilentFeedkeys(rhs: string) # {{{
+  # @param {string} rhs - the command to be executed
+  # execute feedkeys() silently by defining and calling an implicit mapping
+  # (just executing a command from feedkeys() will show entered strings, hit-enter prompts, etc. in the command-line)
+  execute 'nnoremap <SID>(silent-feedkeys)' rhs
+  # unescape '<SID>' to "\<SNR>..._"
+  feedkeys((mode() ==# 'i' ? "\<C-o>" : '')
+    .. eval('"\' .. expand('<SID>') .. '"') .. '(silent-feedkeys)', 'm')
+enddef # }}}
+def RepeatSearch(motion: string) # {{{
+  # @param {'n' | 'N'} motion
+  const cnt = v:count1
+  const isForward = IsForwardMotion(motion)
+  for i in range(cnt)
+    GoToFoldEdge(isForward, line('.'))
+    DoSingleMotion(motion)
+  endfor
+enddef # }}}
+export def Search(motion: string)
+  # @param {'n' | 'N'} motion
+  if motion ==# 'n' ||  motion ==# 'N'
+    RepeatSearch(motion)
+  endif
+  # avoid `function-search-undo`
+  SilentFeedkeys('<ScriptCmd>v:hlsearch = 1<CR>')
 enddef
