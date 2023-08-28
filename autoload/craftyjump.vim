@@ -20,7 +20,7 @@ def IsExclusiveSelEnd(pos: list<number>): bool # {{{
 enddef # }}}
 
 def IsForwardMotion(motion: string): bool # {{{
-  # @param {'w' | 'b' | 'e' | 'ge' | "\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>" | 'n' | 'N'} motion
+  # @param {'w' | 'b' | 'e' | 'ge' | "\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>" | 'n' | 'N' | '*' | '#' | 'g*' | 'g#'} motion
   # @return {bool} - return true if the motion is forward, or false if backward
   var isForward: bool
   if motion ==# 'w' || motion ==# 'e'
@@ -31,13 +31,17 @@ def IsForwardMotion(motion: string): bool # {{{
     isForward = false
   elseif motion ==# 'n' || motion ==# 'N'
     isForward = motion ==# (v:searchforward ? 'n' : 'N')
+  elseif motion ==# '*' || motion ==# 'g*'
+    isForward = true
+  elseif motion ==# '#' || motion ==# 'g#'
+    isForward = false
   else
     echoerr 'Unsupported motion:' motion
   endif
   return isForward
 enddef # }}}
 def IsExclusiveMotion(motion: string): bool # {{{
-  # @param {'w' | 'b' | 'e' | 'ge' | "\<home>" | "\<end>" | 'n' | 'N'} motion
+  # @param {'w' | 'b' | 'e' | 'ge' | "\<home>" | "\<end>" | 'n' | 'N' | '*' | '#' | 'g*' | 'g#'} motion
   # @return {bool} - return true if the motion is exclusive, or false if inclusive
   var isExMotion: bool
   if motion ==# 'w' || motion ==# 'b'
@@ -48,7 +52,7 @@ def IsExclusiveMotion(motion: string): bool # {{{
     isExMotion = true
   elseif motion ==# "\<end>"
     isExMotion = false
-  elseif motion ==# 'n' || motion ==# 'N'
+  elseif motion ==# 'n' || motion ==# 'N' || motion ==# '*' || motion ==# '#' || motion ==# 'g*' || motion ==# 'g#'
     isExMotion = true
   else
     echoerr 'Unsupported motion:' motion
@@ -437,12 +441,61 @@ def RepeatSearch(motion: string, cnt: number): bool # {{{
   endfor
   return isMoved
 enddef # }}}
+def GetCword(): string # {{{
+  # @return {string} - <cword> or the selection in visual mode
+  var cword: string
+  if mode() !~# "[vV\<C-v>]"
+    cword = expand('<cword>')
+  else
+    # get the selection
+    const RestoreReg_unnamed = function('setreg', ['', getreginfo('')])
+    const RestoreReg_v = function('setreg', ['v', getreginfo('v')])
+    try
+      # visual mode is stopped
+      normal! "vy
+      cword = @v
+    finally
+      RestoreReg_unnamed()
+      RestoreReg_v()
+    endtry
+  endif
+  return cword
+enddef # }}}
+def StarSearch(motion: string, cnt: number): bool # {{{
+  # @param {'*' | '#' | 'g*' | 'g#'} motion
+  # @param {number} cnt - v:count1
+  # @return {bool} - whether the pattern has found
+  const isForward = IsForwardMotion(motion)
+  var pat: string
+  if motion ==# '*' || motion ==# '#'
+    pat = '\V\<' .. escape(GetCword(), '\/') .. '\>'
+  elseif motion ==# 'g*' || motion ==# 'g#'
+    pat = '\V' .. escape(GetCword(), '\/')
+  endif
+  var isMoved: bool
+  # adding a pattern to the search history is the same as searching forward without moving the cursor
+  @/ = pat
+  histadd('/', pat)
+  if cnt == 1
+    # check if the pattern is found
+    isMoved = search(pat, isForward ? 'nW' : 'nbW') > 0
+  else
+    # go to the [count - 1]'th match
+    isMoved = RepeatSearch(isForward == IsForwardMotion('n') ? 'n' : 'N', cnt - 1)
+  endif
+  # avoid `function-search-undo` (do not use the 'x' flag)
+  feedkeys("\<ScriptCmd>v:searchforward = " .. (isForward ? 1 : 0) .. "\<CR>")
+  return isMoved
+enddef # }}}
 export def Search(motion: string)
-  # @param {'n' | 'N'} motion
+  # @param {'n' | 'N' | '*' | '#' | 'g*' | 'g#'} motion
   if motion ==# 'n' ||  motion ==# 'N'
     DoMotion(motion,
       function(RepeatSearch, [motion]))
+  elseif motion ==# '*' ||  motion ==# '#' || motion ==# 'g*' ||  motion ==# 'g#'
+    DoMotion(motion,
+      function(StarSearch, [motion]))
   endif
-  # call feedkeys() silently to avoid `function-search-undo` (do not use the 'x' flag)
+  # avoid `function-search-undo` (do not use the 'x' flag)
   feedkeys("\<ScriptCmd>v:hlsearch = 1\<CR>", 'n')
 enddef

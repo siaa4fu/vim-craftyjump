@@ -68,11 +68,27 @@ inoremap <Plug>(craftyjump-scroll-pages-down) <ScriptCmd><SID>craftyjump.Scroll(
 inoremap <Plug>(craftyjump-scroll-pages-up)   <ScriptCmd><SID>craftyjump.Scroll("\<C-b>")<CR>
 
 # pattern-searches
-nnoremap <Plug>(craftyjump-search-n) <ScriptCmd><SID>craftyjump.Search('n')<CR>
-nnoremap <Plug>(craftyjump-search-N) <ScriptCmd><SID>craftyjump.Search('N')<CR>
-xnoremap <Plug>(craftyjump-search-n) <ScriptCmd><SID>craftyjump.Search('n')<CR>
-xnoremap <Plug>(craftyjump-search-N) <ScriptCmd><SID>craftyjump.Search('N')<CR>
-onoremap <Plug>(craftyjump-search-n) <ScriptCmd><SID>craftyjump.Search('n')<CR>
-onoremap <Plug>(craftyjump-search-N) <ScriptCmd><SID>craftyjump.Search('N')<CR>
-inoremap <Plug>(craftyjump-search-n) <ScriptCmd><SID>craftyjump.Search('n')<CR>
-inoremap <Plug>(craftyjump-search-N) <ScriptCmd><SID>craftyjump.Search('N')<CR>
+nnoremap <Plug>(craftyjump-search-n)  <ScriptCmd><SID>craftyjump.Search('n')<CR>
+nnoremap <Plug>(craftyjump-search-N)  <ScriptCmd><SID>craftyjump.Search('N')<CR>
+nnoremap <Plug>(craftyjump-search-*)  <ScriptCmd><SID>craftyjump.Search('*')<CR>
+nnoremap <Plug>(craftyjump-search-#)  <ScriptCmd><SID>craftyjump.Search('#')<CR>
+nnoremap <Plug>(craftyjump-search-g*) <ScriptCmd><SID>craftyjump.Search('g*')<CR>
+nnoremap <Plug>(craftyjump-search-g#) <ScriptCmd><SID>craftyjump.Search('g#')<CR>
+xnoremap <Plug>(craftyjump-search-n)  <ScriptCmd><SID>craftyjump.Search('n')<CR>
+xnoremap <Plug>(craftyjump-search-N)  <ScriptCmd><SID>craftyjump.Search('N')<CR>
+xnoremap <Plug>(craftyjump-search-*)  <ScriptCmd><SID>craftyjump.Search('*')<CR>
+xnoremap <Plug>(craftyjump-search-#)  <ScriptCmd><SID>craftyjump.Search('#')<CR>
+xnoremap <Plug>(craftyjump-search-g*) <ScriptCmd><SID>craftyjump.Search('g*')<CR>
+xnoremap <Plug>(craftyjump-search-g#) <ScriptCmd><SID>craftyjump.Search('g#')<CR>
+onoremap <Plug>(craftyjump-search-n)  <ScriptCmd><SID>craftyjump.Search('n')<CR>
+onoremap <Plug>(craftyjump-search-N)  <ScriptCmd><SID>craftyjump.Search('N')<CR>
+onoremap <Plug>(craftyjump-search-*)  <ScriptCmd><SID>craftyjump.Search('*')<CR>
+onoremap <Plug>(craftyjump-search-#)  <ScriptCmd><SID>craftyjump.Search('#')<CR>
+onoremap <Plug>(craftyjump-search-g*) <ScriptCmd><SID>craftyjump.Search('g*')<CR>
+onoremap <Plug>(craftyjump-search-g#) <ScriptCmd><SID>craftyjump.Search('g#')<CR>
+inoremap <Plug>(craftyjump-search-n)  <ScriptCmd><SID>craftyjump.Search('n')<CR>
+inoremap <Plug>(craftyjump-search-N)  <ScriptCmd><SID>craftyjump.Search('N')<CR>
+inoremap <Plug>(craftyjump-search-*)  <ScriptCmd><SID>craftyjump.Search('*')<CR>
+inoremap <Plug>(craftyjump-search-#)  <ScriptCmd><SID>craftyjump.Search('#')<CR>
+inoremap <Plug>(craftyjump-search-g*) <ScriptCmd><SID>craftyjump.Search('g*')<CR>
+inoremap <Plug>(craftyjump-search-g#) <ScriptCmd><SID>craftyjump.Search('g#')<CR>
