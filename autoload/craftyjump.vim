@@ -37,7 +37,7 @@ def IsForwardMotion(motion: string): bool # {{{
   return isForward
 enddef # }}}
 def IsExclusiveMotion(motion: string): bool # {{{
-  # @param {'w' | 'b' | 'e' | 'ge' | "\<home>" | "\<end>"} motion
+  # @param {'w' | 'b' | 'e' | 'ge' | "\<home>" | "\<end>" | 'n' | 'N'} motion
   # @return {bool} - return true if the motion is exclusive, or false if inclusive
   var isExMotion: bool
   if motion ==# 'w' || motion ==# 'b'
@@ -48,6 +48,8 @@ def IsExclusiveMotion(motion: string): bool # {{{
     isExMotion = true
   elseif motion ==# "\<end>"
     isExMotion = false
+  elseif motion ==# 'n' || motion ==# 'N'
+    isExMotion = true
   else
     echoerr 'Unsupported motion:' motion
   endif
@@ -409,19 +411,24 @@ export def Scroll(motion: string)
   scrolltimerid = timer_start(10, function(SmoothScroll, [motion, lines]))
 enddef
 
-def RepeatSearch(motion: string) # {{{
+def RepeatSearch(motion: string, cnt: number): bool # {{{
   # @param {'n' | 'N'} motion
-  const cnt = v:count1
+  # @param {number} cnt - v:count1
+  # @return {bool} - whether the cursor has moved to a match
   const isForward = IsForwardMotion(motion)
+  var isMoved: bool
   for i in range(cnt)
     GoToFoldEdge(isForward, line('.'))
-    DoSingleMotion(motion)
+    isMoved = DoSingleMotion(motion)
+    if ! isMoved | break | endif
   endfor
+  return isMoved
 enddef # }}}
 export def Search(motion: string)
   # @param {'n' | 'N'} motion
   if motion ==# 'n' ||  motion ==# 'N'
-    RepeatSearch(motion)
+    DoMotion(motion,
+      function(RepeatSearch, [motion]))
   endif
   # call feedkeys() silently to avoid `function-search-undo` (do not use the 'x' flag)
   feedkeys("\<ScriptCmd>v:hlsearch = 1\<CR>", 'n')

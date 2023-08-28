@@ -72,5 +72,7 @@ nnoremap <Plug>(craftyjump-search-n) <ScriptCmd><SID>craftyjump.Search('n')<CR>
 nnoremap <Plug>(craftyjump-search-N) <ScriptCmd><SID>craftyjump.Search('N')<CR>
 xnoremap <Plug>(craftyjump-search-n) <ScriptCmd><SID>craftyjump.Search('n')<CR>
 xnoremap <Plug>(craftyjump-search-N) <ScriptCmd><SID>craftyjump.Search('N')<CR>
+onoremap <Plug>(craftyjump-search-n) <ScriptCmd><SID>craftyjump.Search('n')<CR>
+onoremap <Plug>(craftyjump-search-N) <ScriptCmd><SID>craftyjump.Search('N')<CR>
 inoremap <Plug>(craftyjump-search-n) <ScriptCmd><SID>craftyjump.Search('n')<CR>
 inoremap <Plug>(craftyjump-search-N) <ScriptCmd><SID>craftyjump.Search('N')<CR>
