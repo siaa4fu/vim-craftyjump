@@ -409,15 +409,6 @@ export def Scroll(motion: string)
   scrolltimerid = timer_start(10, function(SmoothScroll, [motion, lines]))
 enddef
 
-def SilentFeedkeys(rhs: string) # {{{
-  # @param {string} rhs - the command to be executed
-  # execute feedkeys() silently by defining and calling an implicit mapping
-  # (just executing a command from feedkeys() will show entered strings, hit-enter prompts, etc. in the command-line)
-  execute 'nnoremap <SID>(silent-feedkeys)' rhs
-  # unescape '<SID>' to "\<SNR>..._"
-  feedkeys((mode() ==# 'i' ? "\<C-o>" : '')
-    .. eval('"\' .. expand('<SID>') .. '"') .. '(silent-feedkeys)', 'm')
-enddef # }}}
 def RepeatSearch(motion: string) # {{{
   # @param {'n' | 'N'} motion
   const cnt = v:count1
@@ -432,6 +423,6 @@ export def Search(motion: string)
   if motion ==# 'n' ||  motion ==# 'N'
     RepeatSearch(motion)
   endif
-  # avoid `function-search-undo`
-  SilentFeedkeys('<ScriptCmd>v:hlsearch = 1<CR>')
+  # call feedkeys() silently to avoid `function-search-undo` (do not use the 'x' flag)
+  feedkeys("\<ScriptCmd>v:hlsearch = 1\<CR>", 'n')
 enddef
