@@ -80,9 +80,16 @@ def DoSingleMotion(motion: string): bool # {{{
   if motion ==# 'w' || motion ==# 'b' || motion ==# 'e' || motion ==# 'ge'
       || motion ==# '^' || motion ==# 'g_'
       || motion ==# '0' || motion ==# 'hg0' || motion ==# '$' || motion ==# 'lg$'
-      || motion ==# 'n' || motion ==# 'N'
     execute 'normal!' motion
     isMoved = true
+  elseif motion ==# 'n' || motion ==# 'N'
+    try
+      execute 'normal!' motion
+      isMoved = true
+    catch /^Vim\%((\a\+)\)\=:E486:/
+      # pattern not found
+      echohl ErrorMsg | echomsg matchstr(v:exception, '^Vim\%((\a\+)\)\=:\zs.*') | echohl None
+    endtry
   else
     echoerr 'Unsupported motion:' motion
   endif
@@ -418,9 +425,15 @@ def RepeatSearch(motion: string, cnt: number): bool # {{{
   const isForward = IsForwardMotion(motion)
   var isMoved: bool
   for i in range(cnt)
-    GoToFoldEdge(isForward, line('.'))
+    const prevpos = getcursorcharpos()
+    # skip a closed fold
+    GoToFoldEdge(isForward, prevpos[1])
     isMoved = DoSingleMotion(motion)
-    if ! isMoved | break | endif
+    if ! isMoved
+      # move the cursor back if no pattern is found
+      setcharpos('.', prevpos)
+      break
+    endif
   endfor
   return isMoved
 enddef # }}}
