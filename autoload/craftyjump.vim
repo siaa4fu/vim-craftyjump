@@ -422,6 +422,25 @@ export def Scroll(motion: string)
   scrolltimerid = timer_start(10, function(SmoothScroll, [motion, lines]))
 enddef
 
+def GetCword(): string # {{{
+  # @return {string} - <cword> or the selection in visual mode
+  var cword: string
+  if mode() !~# "[vV\<C-v>]"
+    cword = expand('<cword>')
+  else
+    const RestoreReg_unnamed = function('setreg', ['', getreginfo('')])
+    const RestoreReg_v = function('setreg', ['v', getreginfo('v')])
+    try
+      # visual mode is stopped
+      normal! "vy
+      cword = @v
+    finally
+      RestoreReg_unnamed()
+      RestoreReg_v()
+    endtry
+  endif
+  return cword
+enddef # }}}
 def RepeatSearch(motion: string, cnt: number): bool # {{{
   # @param {'n' | 'N'} motion
   # @param {number} cnt - v:count1
@@ -441,30 +460,10 @@ def RepeatSearch(motion: string, cnt: number): bool # {{{
   endfor
   return isMoved
 enddef # }}}
-def GetCword(): string # {{{
-  # @return {string} - <cword> or the selection in visual mode
-  var cword: string
-  if mode() !~# "[vV\<C-v>]"
-    cword = expand('<cword>')
-  else
-    # get the selection
-    const RestoreReg_unnamed = function('setreg', ['', getreginfo('')])
-    const RestoreReg_v = function('setreg', ['v', getreginfo('v')])
-    try
-      # visual mode is stopped
-      normal! "vy
-      cword = @v
-    finally
-      RestoreReg_unnamed()
-      RestoreReg_v()
-    endtry
-  endif
-  return cword
-enddef # }}}
-def StarSearch(motion: string, cnt: number): bool # {{{
+def StarSearch(motion: string): bool # {{{
   # @param {'*' | '#' | 'g*' | 'g#'} motion
-  # @param {number} cnt - v:count1
   # @return {bool} - whether the pattern has found
+  const cnt = v:count1
   const isForward = IsForwardMotion(motion)
   var pat: string
   if motion ==# '*' || motion ==# '#'
@@ -472,12 +471,20 @@ def StarSearch(motion: string, cnt: number): bool # {{{
   elseif motion ==# 'g*' || motion ==# 'g#'
     pat = '\V' .. escape(GetCword(), '\/')
   endif
+  const isMoved = SearchPattern(isForward, pat, cnt)
+  return isMoved
+enddef # }}}
+def SearchPattern(isForward: bool, pat: string, cnt: number): bool # {{{
+  # @param {bool} isForward - search forward if true, backward if false
+  # @param {string} pat - the regexp pattern
+  # @param {number} cnt - v:count1
+  # @return {bool} - whether the pattern has found
   var isMoved: bool
   # adding a pattern to the search history is the same as searching forward without moving the cursor
-  @/ = pat
+  @/ = pat # v:searchforward is reset to true
   histadd('/', pat)
   if cnt == 1
-    # check if the pattern is found
+    # check if the pattern is found (do not move the cursor)
     isMoved = search(pat, isForward ? 'nW' : 'nbW') > 0
   else
     # go to the [count - 1]'th match
@@ -489,12 +496,11 @@ def StarSearch(motion: string, cnt: number): bool # {{{
 enddef # }}}
 export def Search(motion: string)
   # @param {'n' | 'N' | '*' | '#' | 'g*' | 'g#'} motion
-  if motion ==# 'n' ||  motion ==# 'N'
+  if motion ==# 'n' || motion ==# 'N'
     DoMotion(motion,
       function(RepeatSearch, [motion]))
-  elseif motion ==# '*' ||  motion ==# '#' || motion ==# 'g*' ||  motion ==# 'g#'
-    DoMotion(motion,
-      function(StarSearch, [motion]))
+  elseif motion ==# '*' || motion ==# '#' || motion ==# 'g*' || motion ==# 'g#'
+    StarSearch(motion)
   endif
   # avoid `function-search-undo` (do not use the 'x' flag)
   feedkeys("\<ScriptCmd>v:hlsearch = 1\<CR>", 'n')
