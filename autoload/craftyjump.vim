@@ -447,17 +447,24 @@ def RepeatSearch(motion: string, cnt: number): bool # {{{
   # @return {bool} - whether the cursor has moved to a match
   const isForward = IsForwardMotion(motion)
   var isMoved: bool
+  const prevpos = getcursorcharpos()
   for i in range(cnt)
-    const prevpos = getcursorcharpos()
     # skip a closed fold
     GoToFoldEdge(isForward, prevpos[1])
     isMoved = DoSingleMotion(motion)
-    if ! isMoved
-      # move the cursor back if no pattern is found
-      setcharpos('.', prevpos)
-      break
-    endif
+    if ! isMoved | break | endif
   endfor
+  if isMoved
+    const pos = getcursorcharpos()
+    if prevpos[1] != pos[1] && pos[1] == (isForward ? line('w$') : line('w0'))
+      # when the cursor moved to another line (which means at least 2 matches were found)
+      # and that line is the first or last line visible in window
+      normal! zz
+    endif
+  else
+    # move the cursor back if no pattern is found
+    setcharpos('.', prevpos)
+  endif
   return isMoved
 enddef # }}}
 def StarSearch(motion: string): bool # {{{
