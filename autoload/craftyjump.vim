@@ -20,7 +20,7 @@ def IsExclusiveSelEnd(pos: list<number>): bool # {{{
 enddef # }}}
 
 def IsForwardMotion(motion: string): bool # {{{
-  # @param {'w' | 'b' | 'e' | 'ge' | "\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>" | 'n' | 'N' | '*' | '#' | 'g*' | 'g#'} motion
+  # @param {'w' | 'b' | 'e' | 'ge' | "\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>" | 'n' | 'N' | '*' | '#' | 'g*' | 'g#' | '[n' | ']n' | '[N' | ']N'} motion
   # @return {bool} - return true if the motion is forward, or false if backward
   var isForward: bool
   if motion ==# 'w' || motion ==# 'e'
@@ -35,6 +35,10 @@ def IsForwardMotion(motion: string): bool # {{{
     isForward = true
   elseif motion ==# '#' || motion ==# 'g#'
     isForward = false
+  elseif motion ==# '[n' || motion ==# '[N'
+    isForward = false
+  elseif motion ==# ']n' || motion ==# ']N'
+    isForward = true
   else
     echoerr 'Unsupported motion:' motion
   endif
@@ -501,13 +505,54 @@ def SearchPattern(isForward: bool, pat: string, cnt: number): bool # {{{
   feedkeys("\<ScriptCmd>v:searchforward = " .. (isForward ? 1 : 0) .. "\<CR>")
   return isMoved
 enddef # }}}
+def SearchJump(motion: string, _): bool # {{{
+  # @param {'[n' | ']n' | '[N' | ']N'} motion
+  # @return {bool} - whether the cursor has moved to a match
+  var searchresult: dict<any>
+  try
+    searchresult = searchcount({maxcount: 0})
+  catch /^Vim\%((\a\+)\)\=:E/
+    # probably an invalid regular expression was used, so abort
+    echohl ErrorMsg | echomsg matchstr(v:exception, '^Vim\%((\a\+)\)\=:\zs.*') | echohl None
+    return false
+  endtry
+  var cnt: number
+  const isForward = IsForwardMotion(motion)
+  var searchflags: string
+  if motion ==# '[n' || motion ==# ']n'
+    # jump to the [count] previous or next match
+    cnt = v:count1
+    searchflags = isForward ? '' : 'b'
+  elseif motion ==# '[N' || motion ==# ']N'
+    # jump to the [count]th match, or the first or last match as default
+    const nth = v:count ?? isForward ? searchresult.total : 1
+    if searchresult.current < nth
+      cnt = nth - searchresult.current
+      searchflags = 'W'
+    else
+      # move the cursor to the start position of the current match
+      search(@/, 'bc')
+      cnt = searchresult.current - nth
+      searchflags = 'bW'
+    endif
+  endif
+  var isMoved: bool
+  for i in range(cnt)
+    isMoved = search(@/, searchflags) > 0
+    if ! isMoved | break | endif
+  endfor
+  return isMoved
+enddef # }}}
 export def Search(motion: string)
-  # @param {'n' | 'N' | '*' | '#' | 'g*' | 'g#'} motion
+  # @param {'n' | 'N' | '*' | '#' | 'g*' | 'g#' | '[n' | ']n' | '[N' | ']N'} motion
   if motion ==# 'n' || motion ==# 'N'
     DoMotion(motion,
       function(RepeatSearch, [motion]))
   elseif motion ==# '*' || motion ==# '#' || motion ==# 'g*' || motion ==# 'g#'
     StarSearch(motion)
+  elseif motion ==# '[n' || motion ==# ']n' || motion ==# '[N' || motion ==# ']N'
+    DoMotion(motion,
+      function(SearchJump, [motion]))
   endif
   # avoid `function-search-undo` (do not use the 'x' flag)
   feedkeys("\<ScriptCmd>v:hlsearch = 1\<CR>", 'n')
