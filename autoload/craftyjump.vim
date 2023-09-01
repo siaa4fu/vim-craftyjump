@@ -24,10 +24,12 @@ def IsForwardMotion(motion: string): bool # {{{
   # @return {bool} - return true if the motion is forward, or false if backward
   var isForward: bool
   if motion ==# 'w' || motion ==# 'e'
-      || motion ==# "\<C-d>" || motion ==# "\<C-f>"
     isForward = true
   elseif motion ==# 'b' || motion ==# 'ge'
-      || motion ==# "\<C-u>" || motion ==# "\<C-b>"
+    isForward = false
+  elseif motion ==# "\<C-d>" || motion ==# "\<C-f>"
+    isForward = true
+  elseif motion ==# "\<C-u>" || motion ==# "\<C-b>"
     isForward = false
   elseif motion ==# 'n' || motion ==# 'N'
     isForward = motion ==# (v:searchforward ? 'n' : 'N')
