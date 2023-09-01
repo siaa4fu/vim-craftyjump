@@ -122,11 +122,11 @@ def DoMotion(motion: string, Move: func(number): bool, SpecialMove: func(list<nu
   # @param {string} motion - treat the movement like specified motion
   # @param {func(number): bool} Move
   #   the function that moves the cursor
-  #     @param {number} - v:count1
+  #     @param {number} - v:count
   # @param {func(list<number>)=} SpecialMove
   #   the function that adjusts the cursor position after moving in operator-pending mode
   #     @param {list<number>} - the cursor position before moving returned by getcursorcharpos()
-  const cnt = v:count1
+  const cnt = v:count
   const mode = mode(true)
   if mode =~# '^no'
     # set the operator to be linewise, characterwise or blockwise (`forced-motion`)
@@ -168,13 +168,13 @@ def IsBeforeLineStart(pos: list<number>, line = getline(pos[1]), ..._): bool # {
 enddef # }}}
 def MoveToKwdChar(motion: string, cnt: number): bool # {{{
   # @param {'w' | 'b' | 'e' | 'ge'} motion
-  # @param {number} cnt - v:count1
+  # @param {number} cnt - v:count
   # @return {bool} - whether the cursor has moved to a keyword character
   const isForward = IsForwardMotion(motion)
   const bufferEdge = isForward ? [line('$'), charcol('$')] : [1, 1]
   const IsOutsideLineEdge = isForward ? IsAfterLineEnd : IsBeforeLineStart
   var isMoved: bool
-  for i in range(cnt)
+  for i in range(cnt ?? 1)
     final prev = {}
     prev.pos = getcursorcharpos() # [0, lnum, charcol, off, curswant]
     prev.line = getline(prev.pos[1])
@@ -244,7 +244,7 @@ enddef
 
 def MoveToCharInWord(motion: string, cnt: number): bool # {{{
   # @param {'w' | 'b' | 'e' | 'ge'} motion
-  # @param {number} cnt - v:count1
+  # @param {number} cnt - v:count
   # @return {bool} - whether the cursor has moved to a word in a word (wiw)
   const isForward = IsForwardMotion(motion)
   var pat: string
@@ -263,7 +263,7 @@ def MoveToCharInWord(motion: string, cnt: number): bool # {{{
     pat = '.\>\|\l\u\|\u\u\l\|\a\A'
   endif
   var isMoved: bool
-  for i in range(cnt)
+  for i in range(cnt ?? 1)
     isMoved = search(pat, isForward ? 'W' : 'bW') > 0
     if isMoved
       const pos = getcursorcharpos()
@@ -284,7 +284,7 @@ export def WordInWord(motion: string)
 enddef
 
 def MoveToFirstChar(cnt: number): bool # {{{
-  # @param {number} cnt - v:count1
+  # @param {number} cnt - v:count
   # @return {bool} - whether the cursor has moved to first characters
   var isMoved: bool
   if cnt > 1
@@ -325,7 +325,7 @@ def MoveToFirstChar(cnt: number): bool # {{{
   return isMoved
 enddef # }}}
 def MoveToLastChar(cnt: number): bool # {{{
-  # @param {number} cnt - v:count1
+  # @param {number} cnt - v:count
   # @return {bool} - whether the cursor has moved to last characters
   var isMoved: bool
   if cnt > 1
@@ -413,13 +413,14 @@ enddef # }}}
 var scrolltimerid: number
 export def Scroll(motion: string)
   # @param {"\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>"} motion
+  const cnt = v:count
   var lines: number
   if motion ==# "\<C-d>" || motion ==# "\<C-u>"
     # scroll [count] lines or half a screen as default
-    lines = v:count > 0 ? v:count : &scroll
+    lines = cnt ?? &scroll
   elseif motion ==# "\<C-f>" || motion ==# "\<C-b>"
     # scroll [count] screens
-    lines = v:count1 * winheight(0)
+    lines = (cnt ?? 1) * winheight(0)
   endif
   # use a timer to activate only last key input on long press
   timer_stop(scrolltimerid) # no error even if a timer ID does not exist
@@ -447,12 +448,12 @@ def GetCword(): string # {{{
 enddef # }}}
 def RepeatSearch(motion: string, cnt: number): bool # {{{
   # @param {'n' | 'N'} motion
-  # @param {number} cnt - v:count1
+  # @param {number} cnt - v:count
   # @return {bool} - whether the cursor has moved to a match
   const isForward = IsForwardMotion(motion)
   var isMoved: bool
   const prevpos = getcursorcharpos()
-  for i in range(cnt)
+  for i in range(cnt ?? 1)
     # skip a closed fold
     GoToFoldEdge(isForward, prevpos[1])
     isMoved = DoSingleMotion(motion)
@@ -474,7 +475,7 @@ enddef # }}}
 def StarSearch(motion: string): bool # {{{
   # @param {'*' | '#' | 'g*' | 'g#'} motion
   # @return {bool} - whether the pattern has found
-  const cnt = v:count1
+  const cnt = v:count
   const isForward = IsForwardMotion(motion)
   var pat: string
   if motion ==# '*' || motion ==# '#'
@@ -488,25 +489,26 @@ enddef # }}}
 def SearchPattern(isForward: bool, pat: string, cnt: number): bool # {{{
   # @param {bool} isForward - search forward if true, backward if false
   # @param {string} pat - the regexp pattern
-  # @param {number} cnt - v:count1
+  # @param {number} cnt - v:count
   # @return {bool} - whether the pattern has found
   var isMoved: bool
   # adding a pattern to the search history is the same as searching forward without moving the cursor
   @/ = pat # v:searchforward is reset to true
   histadd('/', pat)
-  if cnt == 1
+  if cnt < 2
     # check if the pattern is found (do not move the cursor)
     isMoved = search(pat, isForward ? 'nW' : 'nbW') > 0
   else
-    # go to the [count - 1]'th match
+    # go to the [count - 1]th match
     isMoved = RepeatSearch(isForward == IsForwardMotion('n') ? 'n' : 'N', cnt - 1)
   endif
   # avoid `function-search-undo` (do not use the 'x' flag)
   feedkeys("\<ScriptCmd>v:searchforward = " .. (isForward ? 1 : 0) .. "\<CR>")
   return isMoved
 enddef # }}}
-def SearchJump(motion: string, _): bool # {{{
+def SearchJump(motion: string, cnt: number): bool # {{{
   # @param {'[n' | ']n' | '[N' | ']N'} motion
+  # @param {number} cnt - v:count
   # @return {bool} - whether the cursor has moved to a match
   var searchresult: dict<any>
   try
@@ -516,28 +518,28 @@ def SearchJump(motion: string, _): bool # {{{
     echohl ErrorMsg | echomsg matchstr(v:exception, '^Vim\%((\a\+)\)\=:\zs.*') | echohl None
     return false
   endtry
-  var cnt: number
+  var steps: number
   const isForward = IsForwardMotion(motion)
   var searchflags: string
   if motion ==# '[n' || motion ==# ']n'
     # jump to the [count] previous or next match
-    cnt = v:count1
+    steps = cnt ?? 1
     searchflags = isForward ? '' : 'b'
   elseif motion ==# '[N' || motion ==# ']N'
     # jump to the [count]th match, or the first or last match as default
-    const nth = v:count ?? isForward ? searchresult.total : 1
+    const nth = cnt ?? isForward ? searchresult.total : 1
     if searchresult.current < nth
-      cnt = nth - searchresult.current
+      steps = nth - searchresult.current
       searchflags = 'W'
     else
       # move the cursor to the start position of the current match
       search(@/, 'bc')
-      cnt = searchresult.current - nth
+      steps = searchresult.current - nth
       searchflags = 'bW'
     endif
   endif
   var isMoved: bool
-  for i in range(cnt)
+  for i in range(steps)
     isMoved = search(@/, searchflags) > 0
     if ! isMoved | break | endif
   endfor
