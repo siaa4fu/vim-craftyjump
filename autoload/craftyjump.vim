@@ -90,8 +90,8 @@ def DoSingleMotion(motion: string): bool # {{{
     try
       execute 'normal!' motion
       isMoved = true
-    catch /^Vim\%((\a\+)\)\=:E486:/
-      # pattern not found
+    catch /^Vim\%((\a\+)\)\=:E/
+      # catch all vim errors such as 'pattern not found'
       echohl ErrorMsg | echomsg matchstr(v:exception, '^Vim\%((\a\+)\)\=:\zs.*') | echohl None
     endtry
   else
