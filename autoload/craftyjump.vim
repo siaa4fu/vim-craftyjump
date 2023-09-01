@@ -45,7 +45,7 @@ def IsForwardMotion(motion: string): bool # {{{
   return isForward
 enddef # }}}
 def IsExclusiveMotion(motion: string): bool # {{{
-  # @param {'w' | 'b' | 'e' | 'ge' | "\<home>" | "\<end>" | 'n' | 'N' | '*' | '#' | 'g*' | 'g#'} motion
+  # @param {'w' | 'b' | 'e' | 'ge' | "\<home>" | "\<end>" | 'n' | 'N' | '*' | '#' | 'g*' | 'g#' | '[n' | ']n' | '[N' | ']N'} motion
   # @return {bool} - return true if the motion is exclusive, or false if inclusive
   var isExMotion: bool
   if motion ==# 'w' || motion ==# 'b'
@@ -56,7 +56,9 @@ def IsExclusiveMotion(motion: string): bool # {{{
     isExMotion = true
   elseif motion ==# "\<end>"
     isExMotion = false
-  elseif motion ==# 'n' || motion ==# 'N' || motion ==# '*' || motion ==# '#' || motion ==# 'g*' || motion ==# 'g#'
+  elseif motion ==# 'n' || motion ==# 'N'
+      || motion ==# '*' || motion ==# '#' || motion ==# 'g*' || motion ==# 'g#'
+      || motion ==# '[n' || motion ==# ']n' || motion ==# '[N' || motion ==# ']N'
     isExMotion = true
   else
     echoerr 'Unsupported motion:' motion
