@@ -85,26 +85,37 @@ def GoToFoldEdge(isForward: bool, lnum: number): bool # {{{
   endif
   return isMoved
 enddef # }}}
-def DoSingleMotion(motion: string): bool # {{{
-  # @param {'w' | 'b' | 'e' | 'ge' | '^' | 'g_' | '0' | 'hg0' | '$' | 'lg$' | 'n' | 'N'} motion
-  # @return {bool} - whether the motion has been executed
+def DoNormal(...cmds: list<any>): bool # {{{
+  # @param {list<number | string>} cmds - the list of [count] and normal mode commands allowed to execute
+  #   [count]: a number greater than 0
+  #   left-right-motions: 'h' | 'l' | '0' | '^' | '$' | 'g_' | 'g0' | 'g$'
+  #   up-down-motions: 'gk' | 'gj'
+  #   word-motions: 'w' | 'b' | 'e' | 'ge'
+  #   scrolling: '<C-e>' | '<C-y>' | 'zz'
+  #   search-commands: 'n' | 'N'
+  # @return {bool} - whether commands have been executed
+  # test whether all commands in the list are allowed to execute, and then simply join them into one string
+  var cmdstr: string
+  for cmd in cmds
+    if type(cmd) == v:t_number
+        || cmd ==# 'h' || cmd ==# 'l' || cmd ==# '0' || cmd ==# '^' || cmd ==# '$' || cmd ==# 'g_' || cmd ==# 'g0' || cmd ==# 'g$'
+        || cmd ==# 'gk' || cmd ==# 'gj'
+        || cmd ==# 'w' || cmd ==# 'b' || cmd ==# 'e' || cmd ==# 'ge'
+        || cmd ==# "\<C-e>" || cmd ==# "\<C-y>" || cmd ==# 'zz'
+        || cmd ==# 'n' || cmd ==# 'N'
+      cmdstr ..= cmd
+    else
+      echoerr 'Unsupported command:' cmd
+    endif
+  endfor
   var isMoved: bool
-  if motion ==# 'w' || motion ==# 'b' || motion ==# 'e' || motion ==# 'ge'
-      || motion ==# '^' || motion ==# 'g_'
-      || motion ==# '0' || motion ==# 'hg0' || motion ==# '$' || motion ==# 'lg$'
-    execute 'normal!' motion
+  try
+    execute 'normal!' cmdstr
     isMoved = true
-  elseif motion ==# 'n' || motion ==# 'N'
-    try
-      execute 'normal!' motion
-      isMoved = true
-    catch /^Vim\%((\a\+)\)\=:E/
-      # catch all vim errors such as 'pattern not found'
-      echohl ErrorMsg | echomsg matchstr(v:exception, '^Vim\%((\a\+)\)\=:\zs.*') | echohl None
-    endtry
-  else
-    echoerr 'Unsupported motion:' motion
-  endif
+  catch /^Vim\%((\a\+)\)\=:E/
+    # catch all vim errors such as 'Pattern not found'
+    echohl ErrorMsg | echomsg matchstr(v:exception, '^Vim\%((\a\+)\)\=:\zs.*') | echohl None
+  endtry
   return isMoved
 enddef # }}}
 def DoSpecialMotion(motion: string, prevpos: list<number>) # {{{
@@ -118,7 +129,7 @@ def DoSpecialMotion(motion: string, prevpos: list<number>) # {{{
       # get characters that the cursor has passed through while moving, but only on the cursor line
       const passedChars = getline(pos[1])[(prevpos[1] == pos[1] ? prevpos[2] - 1 : 0) : pos[2] - 2]
       const offsetToLeft = strcharlen(matchstr(passedChars, '\s\+\%(\S\&[^[:keyword:]]\)*$'))
-      if offsetToLeft > 0 | execute 'normal!' offsetToLeft .. 'h' | endif
+      if offsetToLeft > 0 | DoNormal(offsetToLeft, 'h') | endif
     endif
   endif
 enddef # }}}
@@ -191,9 +202,9 @@ def MoveToKwdChar(motion: string, cnt: number): bool # {{{
         prev.isExSelEnd = IsExclusiveSelEnd(prev.pos)
       elseif motion ==# 'e' && prev.isExSelEnd
         # make the motion 'e' move from the original position if the cursor is at the end of the exclusive selection
-        execute 'normal! h'
+        isMoved = DoNormal('h')
       endif
-      isMoved = DoSingleMotion(motion)
+      isMoved = DoNormal(motion)
       final pos = getcursorcharpos()
       if prev.pos == pos
         # abort if the cursor could not move
@@ -218,7 +229,7 @@ def MoveToKwdChar(motion: string, cnt: number): bool # {{{
         else
           # move the cursor to the edge of the line
           setcharpos('.', prev.pos)
-          isMoved = DoSingleMotion(isForward ? 'g_' : '^')
+          isMoved = DoNormal(isForward ? 'g_' : '^')
           break
         endif
       endif
@@ -273,7 +284,9 @@ def MoveToCharInWord(motion: string, cnt: number): bool # {{{
       const pos = getcursorcharpos()
       const isExSelEnd = IsExclusiveSelEnd(pos)
       # shift the motion 'e' one to the right at the end of the exclusive selection, like the word-motion 'e'
-      if motion ==# 'e' && isExSelEnd | execute 'normal! l' | endif
+      if motion ==# 'e' && isExSelEnd
+        isMoved = DoNormal('l')
+      endif
     else
       break
     endif
@@ -294,7 +307,7 @@ def MoveToFirstChar(cnt: number): bool # {{{
   if cnt > 1
     # move to [count - 1] screen lines upward, then to the last character of the screen line
     # ('g0' does not support [count], but it is considered possible to go lines upward)
-    execute 'normal!' (cnt - 1) .. 'gkg$'
+    isMoved = DoNormal(cnt - 1, 'gk', 'g$')
   endif
   final cols = {}
   cols.cursor = charcol('.')
@@ -304,26 +317,26 @@ def MoveToFirstChar(cnt: number): bool # {{{
     # the cursor moves sequentially to 'g0' positions, which are first or leftmost characters of the current screen line,
     # then cycles through the '^' and '0' positions
     if cols.firstNonBlank < cols.cursor
-      isMoved = DoSingleMotion('hg0')
+      isMoved = DoNormal('h', 'g0')
       if charcol('.') <= cols.firstNonBlank
-        isMoved = DoSingleMotion('^')
+        isMoved = DoNormal('^')
       endif
     elseif cols.start < cols.cursor
-      isMoved = DoSingleMotion('hg0')
+      isMoved = DoNormal('h', 'g0')
       if charcol('.') <= cols.start
-        isMoved = DoSingleMotion('0')
+        isMoved = DoNormal('0')
       endif
     else
-      isMoved = DoSingleMotion('^')
+      isMoved = DoNormal('^')
     endif
   else
     # the cursor cycles through the '^' and '0' positions
     if cols.firstNonBlank < cols.cursor
-      isMoved = DoSingleMotion('^')
+      isMoved = DoNormal('^')
     elseif cols.start < cols.cursor
-      isMoved = DoSingleMotion('0')
+      isMoved = DoNormal('0')
     else
-      isMoved = DoSingleMotion('^')
+      isMoved = DoNormal('^')
     endif
   endif
   return isMoved
@@ -334,7 +347,7 @@ def MoveToLastChar(cnt: number): bool # {{{
   var isMoved: bool
   if cnt > 1
     # move to [count - 1] screen lines downward like g$, then to the first character of the screen line
-    execute 'normal!' (cnt - 1) .. 'gjg0'
+    isMoved = DoNormal(cnt - 1, 'gj', 'g0')
   endif
   final cols = {}
   cols.cursor = charcol('.')
@@ -344,26 +357,26 @@ def MoveToLastChar(cnt: number): bool # {{{
     # the cursor moves sequentially to 'g$' positions, which are last or rightmost characters of the current screen line,
     # then cycles through the 'g_' and '$' positions
     if cols.cursor < cols.lastNonBlank
-      isMoved = DoSingleMotion('lg$')
+      isMoved = DoNormal('l', 'g$')
       if cols.lastNonBlank <= charcol('.')
-        isMoved = DoSingleMotion('g_')
+        isMoved = DoNormal('g_')
       endif
     elseif cols.cursor < cols.end
-      isMoved = DoSingleMotion('lg$')
+      isMoved = DoNormal('l', 'g$')
       if cols.end <= charcol('.')
-        isMoved = DoSingleMotion('$')
+        isMoved = DoNormal('$')
       endif
     else
-      isMoved = DoSingleMotion('g_')
+      isMoved = DoNormal('g_')
     endif
   else
     # the cursor cycles through the 'g_' and '$' positions
     if cols.cursor < cols.lastNonBlank
-      isMoved = DoSingleMotion('g_')
+      isMoved = DoNormal('g_')
     elseif cols.cursor < cols.end
-      isMoved = DoSingleMotion('$')
+      isMoved = DoNormal('$')
     else
-      isMoved = DoSingleMotion('g_')
+      isMoved = DoNormal('g_')
     endif
   endif
   return isMoved
@@ -400,10 +413,10 @@ def SmoothScroll(motion: string, lines: number, _) # {{{
     #   the cursor is at the last line visible in window when scrolling upward
     #   &scrolloff is greater than 0
     const pos = getcursorcharpos() # [0, lnum, charcol, off, curswant]
-    execute 'normal!' keys[0]
+    DoNormal(keys[0])
     if getcursorcharpos() == pos
       # move the cursor if it still stays where it was
-      execute 'normal!' keys[1]
+      DoNormal(keys[1])
     endif
     if n % step == 0
       redraw
@@ -411,7 +424,7 @@ def SmoothScroll(motion: string, lines: number, _) # {{{
   endwhile
   if &startofline
     # move the cursor to the first non-blank character of the line
-    normal! ^
+    DoNormal('^')
   endif
 enddef # }}}
 var scrolltimerid: number
@@ -460,7 +473,7 @@ def RepeatSearch(motion: string, cnt: number): bool # {{{
   for i in range(cnt ?? 1)
     # skip a closed fold
     GoToFoldEdge(isForward, prevpos[1])
-    isMoved = DoSingleMotion(motion)
+    isMoved = DoNormal(motion)
     if ! isMoved | break | endif
   endfor
   if isMoved
@@ -468,7 +481,7 @@ def RepeatSearch(motion: string, cnt: number): bool # {{{
     if prevpos[1] != pos[1] && pos[1] == (isForward ? line('w$') : line('w0'))
       # when the cursor moved to another line (which means at least 2 matches were found)
       # and that line is the first or last line visible in window
-      normal! zz
+      isMoved = DoNormal('zz')
     endif
   else
     # move the cursor back if no pattern is found
