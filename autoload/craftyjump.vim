@@ -94,7 +94,8 @@ def DoNormal(...cmds: list<any>): bool # {{{
   #   scrolling: '<C-e>' | '<C-y>' | 'zz'
   #   search-commands: 'n' | 'N'
   # @return {bool} - whether commands have been executed
-  # test whether all commands in the list are allowed to execute, and then simply join them into one string
+  var isMoved: bool
+  # check whether all commands in the list are allowed to be executed, and then simply join them into one string
   var cmdstr: string
   for cmd in cmds
     if type(cmd) == v:t_number
@@ -106,15 +107,16 @@ def DoNormal(...cmds: list<any>): bool # {{{
       cmdstr ..= cmd
     else
       echoerr 'Unsupported command:' cmd
+      return isMoved
     endif
   endfor
-  var isMoved: bool
   try
+    # execute all commands at once
     execute 'normal!' cmdstr
     isMoved = true
   catch /^Vim\%((\a\+)\)\=:E/
-    # catch all vim errors such as 'Pattern not found'
-    echohl ErrorMsg | echomsg matchstr(v:exception, '^Vim\%((\a\+)\)\=:\zs.*') | echohl None
+    # catch all vim errors such as 'Pattern not found' (echo as a message)
+    echohl ErrorMsg | echomsg substitute(v:exception, '^Vim\%((\a\+)\)\=:', '', '') | echohl None
   endtry
   return isMoved
 enddef # }}}
@@ -508,10 +510,10 @@ def SearchPattern(isForward: bool, pat: string, cnt: number): bool # {{{
   # @param {string} pat - the regexp pattern
   # @param {number} cnt - v:count
   # @return {bool} - whether the pattern has found
-  var isMoved: bool
   # adding a pattern to the search history is the same as searching forward without moving the cursor
   @/ = pat # v:searchforward is reset to true
   histadd('/', pat)
+  var isMoved: bool
   if cnt < 2
     # check if the pattern is found (do not move the cursor)
     isMoved = search(pat, isForward ? 'nW' : 'nbW') > 0
@@ -527,13 +529,14 @@ def SearchJump(motion: string, cnt: number): bool # {{{
   # @param {'[n' | ']n' | '[N' | ']N'} motion
   # @param {number} cnt - v:count
   # @return {bool} - whether the cursor has moved to a match
+  var isMoved: bool
   var searchresult: dict<any>
   try
     searchresult = searchcount({maxcount: 0})
   catch /^Vim\%((\a\+)\)\=:E/
-    # probably an invalid regular expression was used, so abort
-    echohl ErrorMsg | echomsg matchstr(v:exception, '^Vim\%((\a\+)\)\=:\zs.*') | echohl None
-    return false
+    # probably an invalid regular expression was used, so abort (echo as a message)
+    echohl ErrorMsg | echomsg substitute(v:exception, '^Vim\%((\a\+)\)\=:', '', '') | echohl None
+    return isMoved
   endtry
   var steps: number
   const isForward = IsForwardMotion(motion)
@@ -555,7 +558,6 @@ def SearchJump(motion: string, cnt: number): bool # {{{
       searchflags = 'bW'
     endif
   endif
-  var isMoved: bool
   for i in range(steps)
     isMoved = search(@/, searchflags) > 0
     if ! isMoved | break | endif
