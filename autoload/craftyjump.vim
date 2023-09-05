@@ -505,7 +505,7 @@ def StarSearch(motion: string): bool # {{{
   const isMoved = SearchPattern(isForward, pat, cnt)
   return isMoved
 enddef # }}}
-def SearchPattern(isForward: bool, pat: string, cnt: number): bool # {{{
+export def SearchPattern(isForward: bool, pat: string, cnt: number): bool # {{{
   # @param {bool} isForward - search forward if true, backward if false
   # @param {string} pat - the regexp pattern
   # @param {number} cnt - v:count
