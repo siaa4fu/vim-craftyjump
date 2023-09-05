@@ -26,17 +26,13 @@ export def DefinePatternSet(name: string, keys: list<string>, patset: list<strin
       const chars = substitute(key, '<[^<>]\+>', (m) => eval('"\' .. m[0] .. '"'), 'g')
       if chars =~# "[\<Esc>\<C-c>]"
         throw '<Esc> and <C-c> cannot be used to select pattern sets.'
+      elseif maparg(plugkey .. chars, 'n') !~# '^\%(<Nop>\)\=$'
+        # the mapping that searches for another set is already defined
+        throw 'The key that selects a pattern set must be unique: ' .. key
       endif
-      var lhs: string
-      for char in split(chars, '\zs')
-        lhs ..= char
-        if ! empty(maparg(plugkey .. lhs, 'n'))
-          # the mapping that searches for another set is already defined
-          throw 'The key that selects a pattern set must be unique: ' .. key
-        endif
-      endfor
       # define mappings if no error occurs
       patsets[name] = patset
+      const lhs = substitute(chars, '\ze\%(\s\||\)', "\<C-v>", 'g')
       execute 'nnoremap' plugkey .. lhs '<ScriptCmd>Patsearch(' .. string(name) .. ')<CR>'
       if len(patset) > 1
         execute 'nnoremap' plugkey .. 'a' .. lhs '<ScriptCmd>Patsearch(' .. string(name) .. ', ''a'')<CR>'
