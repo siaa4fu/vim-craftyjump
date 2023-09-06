@@ -494,7 +494,6 @@ enddef # }}}
 def StarSearch(motion: string): bool # {{{
   # @param {'*' | '#' | 'g*' | 'g#'} motion
   # @return {bool} - whether the pattern has found
-  const cnt = v:count
   const isForward = IsForwardMotion(motion)
   var pat: string
   if motion ==# '*' || motion ==# '#'
@@ -502,7 +501,7 @@ def StarSearch(motion: string): bool # {{{
   elseif motion ==# 'g*' || motion ==# 'g#'
     pat = '\V' .. escape(GetWordUnderCursor(), '\/')
   endif
-  const isMoved = SearchPattern(isForward, pat, cnt)
+  const isMoved = SearchPattern(isForward, pat)
   return isMoved
 enddef # }}}
 def SearchJump(motion: string, cnt: number): bool # {{{
@@ -559,10 +558,10 @@ export def Search(motion: string)
   feedkeys("\<ScriptCmd>v:hlsearch = 1\<CR>", 'n')
 enddef
 
-export def SearchPattern(isForward: bool, pat: string, cnt: number): bool # {{{
+export def SearchPattern(isForward: bool, pat: string, cnt = v:count): bool # {{{
   # @param {bool} isForward - search forward if true, backward if false
   # @param {string} pat - the regexp pattern
-  # @param {number} cnt - v:count
+  # @param {number=} cnt - v:count
   # @return {bool} - whether the pattern has found
   # adding a pattern to the search history is the same as searching forward without moving the cursor
   @/ = pat # v:searchforward is reset to true
