@@ -8,6 +8,25 @@ def IsCharUnderCursor(regexp: string, pos: list<number>, line = getline(pos[1]))
   # @return {bool} - whether the character under the cursor is a keyword character
   return line[pos[2] - 1] =~# regexp
 enddef # }}}
+def GetWordUnderCursor(): string # {{{
+  # @return {string} - <cword> or the selection in visual mode
+  var cword: string
+  if mode() !~# "[vV\<C-v>]"
+    cword = expand('<cword>')
+  else
+    const RestoreReg_unnamed = function('setreg', ['', getreginfo('')])
+    const RestoreReg_v = function('setreg', ['v', getreginfo('v')])
+    try
+      # visual mode is stopped
+      normal! "vy
+      cword = @v
+    finally
+      RestoreReg_unnamed()
+      RestoreReg_v()
+    endtry
+  endif
+  return cword
+enddef # }}}
 def IsExclusiveSelEnd(pos: list<number>): bool # {{{
   # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
   # @return {bool} - whether the cursor is the end of the exclusive selection
@@ -446,25 +465,6 @@ export def Scroll(motion: string)
   scrolltimerid = timer_start(10, function(SmoothScroll, [motion, lines]))
 enddef
 
-def GetCword(): string # {{{
-  # @return {string} - <cword> or the selection in visual mode
-  var cword: string
-  if mode() !~# "[vV\<C-v>]"
-    cword = expand('<cword>')
-  else
-    const RestoreReg_unnamed = function('setreg', ['', getreginfo('')])
-    const RestoreReg_v = function('setreg', ['v', getreginfo('v')])
-    try
-      # visual mode is stopped
-      normal! "vy
-      cword = @v
-    finally
-      RestoreReg_unnamed()
-      RestoreReg_v()
-    endtry
-  endif
-  return cword
-enddef # }}}
 def RepeatSearch(motion: string, cnt: number): bool # {{{
   # @param {'n' | 'N'} motion
   # @param {number} cnt - v:count
@@ -498,31 +498,11 @@ def StarSearch(motion: string): bool # {{{
   const isForward = IsForwardMotion(motion)
   var pat: string
   if motion ==# '*' || motion ==# '#'
-    pat = '\V\<' .. escape(GetCword(), '\/') .. '\>'
+    pat = '\V\<' .. escape(GetWordUnderCursor(), '\/') .. '\>'
   elseif motion ==# 'g*' || motion ==# 'g#'
-    pat = '\V' .. escape(GetCword(), '\/')
+    pat = '\V' .. escape(GetWordUnderCursor(), '\/')
   endif
   const isMoved = SearchPattern(isForward, pat, cnt)
-  return isMoved
-enddef # }}}
-export def SearchPattern(isForward: bool, pat: string, cnt: number): bool # {{{
-  # @param {bool} isForward - search forward if true, backward if false
-  # @param {string} pat - the regexp pattern
-  # @param {number} cnt - v:count
-  # @return {bool} - whether the pattern has found
-  # adding a pattern to the search history is the same as searching forward without moving the cursor
-  @/ = pat # v:searchforward is reset to true
-  histadd('/', pat)
-  var isMoved: bool
-  if cnt < 2
-    # check if the pattern is found (do not move the cursor)
-    isMoved = search(pat, isForward ? 'nW' : 'nbW') > 0
-  else
-    # go to the [count - 1]th match
-    isMoved = RepeatSearch(isForward == IsForwardMotion('n') ? 'n' : 'N', cnt - 1)
-  endif
-  # avoid `function-search-undo` (do not use the 'x' flag)
-  feedkeys("\<ScriptCmd>v:searchforward = " .. (isForward ? 1 : 0) .. "\<CR>")
   return isMoved
 enddef # }}}
 def SearchJump(motion: string, cnt: number): bool # {{{
@@ -578,3 +558,24 @@ export def Search(motion: string)
   # avoid `function-search-undo` (do not use the 'x' flag)
   feedkeys("\<ScriptCmd>v:hlsearch = 1\<CR>", 'n')
 enddef
+
+export def SearchPattern(isForward: bool, pat: string, cnt: number): bool # {{{
+  # @param {bool} isForward - search forward if true, backward if false
+  # @param {string} pat - the regexp pattern
+  # @param {number} cnt - v:count
+  # @return {bool} - whether the pattern has found
+  # adding a pattern to the search history is the same as searching forward without moving the cursor
+  @/ = pat # v:searchforward is reset to true
+  histadd('/', pat)
+  var isMoved: bool
+  if cnt < 2
+    # check if the pattern is found (do not move the cursor)
+    isMoved = search(pat, isForward ? 'nW' : 'nbW') > 0
+  else
+    # go to the [count - 1]th match
+    isMoved = RepeatSearch(isForward == IsForwardMotion('n') ? 'n' : 'N', cnt - 1)
+  endif
+  # avoid `function-search-undo` (do not use the 'x' flag)
+  feedkeys("\<ScriptCmd>v:searchforward = " .. (isForward ? 1 : 0) .. "\<CR>")
+  return isMoved
+enddef # }}}
