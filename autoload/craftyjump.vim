@@ -130,14 +130,22 @@ def DoNormal(...cmds: list<any>): bool # {{{
     endif
   endfor
   try
-    # execute all commands at once
-    execute 'normal!' cmdstr
+    # execute all commands at once without changing the jumplist
+    execute 'keepjumps normal!' cmdstr
     isMoved = true
   catch /^Vim\%((\a\+)\)\=:E/
     # catch all vim errors such as 'Pattern not found' (echo as a message)
     echohl ErrorMsg | echomsg substitute(v:exception, '^Vim\%((\a\+)\)\=:', '', '') | echohl None
   endtry
   return isMoved
+enddef # }}}
+def SetJump(pos: list<number>) # {{{
+  # @param {list<number>} pos - the position to be added to the jumplist
+  # add the position to the jumplist by temporarily going to that position
+  # (calling setcharpos("''", {pos}) sets the ' mark, but does not change the jumplist)
+  const view = winsaveview()
+  setcharpos('.', pos) | execute 'normal! m'''
+  winrestview(view)
 enddef # }}}
 def DoSpecialMotion(motion: string, prevpos: list<number>) # {{{
   # @param {string} motion
@@ -480,6 +488,7 @@ def RepeatSearch(motion: string, cnt: number): bool # {{{
   endfor
   if isMoved
     const pos = getcursorcharpos()
+    SetJump(prevpos)
     if prevpos[1] != pos[1] && pos[1] == (isForward ? line('w$') : line('w0'))
       # when the cursor moved to another line (which means at least 2 matches were found)
       # and that line is the first or last line visible in window
@@ -572,7 +581,9 @@ export def SearchPattern(isForward: bool, pat: string, cnt = v:count): bool # {{
     isMoved = search(pat, isForward ? 'nW' : 'nbW') > 0
   else
     # go to the [count - 1]th match
+    const prevpos = getcursorcharpos()
     isMoved = RepeatSearch(isForward == IsForwardMotion('n') ? 'n' : 'N', cnt - 1)
+    if isMoved | SetJump(prevpos) | endif
   endif
   # avoid `function-search-undo` (do not use the 'x' flag)
   feedkeys("\<ScriptCmd>v:searchforward = " .. (isForward ? 1 : 0) .. "\<CR>")
