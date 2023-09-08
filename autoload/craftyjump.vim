@@ -506,9 +506,9 @@ def StarSearch(motion: string): bool # {{{
   const isForward = IsForwardMotion(motion)
   var pat: string
   if motion ==# '*' || motion ==# '#'
-    pat = '\V\<' .. escape(GetWordUnderCursor(), '\/') .. '\>'
+    pat = '\V\<' .. substitute(escape(GetWordUnderCursor(), '\/'), '\n', '\\n', 'g') .. '\>'
   elseif motion ==# 'g*' || motion ==# 'g#'
-    pat = '\V' .. escape(GetWordUnderCursor(), '\/')
+    pat = '\V' .. substitute(escape(GetWordUnderCursor(), '\/'), '\n', '\\n', 'g')
   endif
   const isMoved = SearchPattern(isForward, pat)
   return isMoved
