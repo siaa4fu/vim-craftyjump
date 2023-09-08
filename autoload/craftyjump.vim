@@ -503,15 +503,16 @@ enddef # }}}
 def StarSearch(motion: string): bool # {{{
   # @param {'*' | '#' | 'g*' | 'g#'} motion
   # @return {bool} - whether the pattern has found
+  const cnt = v:count
   const isForward = IsForwardMotion(motion)
   var pat: string
-  const cword = substitute(escape(GetWordUnderCursor(), '\/'), '\n', '\\n', 'g')
+  const cword = escape(GetWordUnderCursor(), '\/')
   if motion ==# '*' || motion ==# '#'
     pat = '\V' .. (cword =~# '^\k' ? '\<' : '') .. cword .. (cword =~# '\k$' ? '\>' : '')
   elseif motion ==# 'g*' || motion ==# 'g#'
     pat = '\V' .. cword
   endif
-  const isMoved = SearchPattern(isForward, pat)
+  const isMoved = SearchPattern(isForward, substitute(pat, '\n', '\\n', 'g'), cnt)
   return isMoved
 enddef # }}}
 def SearchJump(motion: string, cnt: number): bool # {{{
