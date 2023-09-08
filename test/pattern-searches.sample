@@ -1,0 +1,27 @@
+:aaa: bbb aaa bbb :aaa:
+aaabbb:aaa:bbbaaa
+:aaa: bbb aaa bbb :aaa:
+[n][N][[n][]n] ------------------------------
+:#aa: bbb #aa bbb :#aa:
+#aabbb:#aa:bbb#aa
+:#aa: bbb #aa bbb :#aa:
+[*] ------------------------------
+##aa: bbb #aa bbb :#aa:
+aaabbb:#aa:bbbaaa
+:#aa: bbb #aa bbb :#aa:
+[g*] ------------------------------
+##aa: bbb #aa bbb :#aa:
+#aabbb:#aa:bbb#aa
+:#aa: bbb #aa bbb :#aa:
+[#][g#] ------------------------------
+#aaa# bbb aaa bbb #aaa#
+aaabbb#aaa#bbbaaa
+#aaa# bbb aaa bbb #aaa#
+[[N] ------------------------------
+:#aa: bbb aaa bbb :aaa:
+aaabbb:aaa:bbbaaa
+:aaa: bbb aaa bbb :aaa:
+[]N] ------------------------------
+:aaa: bbb aaa bbb :aaa:
+aaabbb:aaa:bbbaaa
+:aaa: bbb aaa bbb :#aa:

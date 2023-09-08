@@ -1,0 +1,752 @@
+scriptencoding utf-8
+" the text 'themis#suite()' is required to run test#viml#themis#test_file()
+Describe pattern-searches
+
+let s:samplelines = readfile('test/pattern-searches.sample')
+
+Context motions simply move the cursor
+  Before
+    " use line 1 to 3
+    call InitTestBuffer(s:samplelines[0 : 2])
+    let @/ = 'aaa'
+  End
+  def s:moveWhole(motion: string, isExSelEnd = false)
+    # move forward from the current position to the end of the buffer, or backward to the start
+    # @param {'n' | 'N' | '[n' | ']n' | '[N' | ']N'} motion
+    # @param {bool=} isExSelEnd - whether the cursor is at the end of the exclusive selection
+    const isForward = motion ==# (v:searchforward ? 'n' : 'N') || motion ==# ']n' || motion ==# ']N'
+    const keyToMove = "\<Plug>(craftyjump-search-" .. get({'[n': 'prev', ']n': 'next', '[N': 'first', ']N': 'last'}, motion, motion) .. ')'
+    const GetIndices = (lnum, skipInitPos) => {
+      const offset_to_posline = {'n': 4, 'N': 4, '[n': 4, ']n': 4, '[N': 20, ']N': 24}[motion] - 1
+      return g:GetIndices(s:samplelines[lnum + offset_to_posline], isForward, isExSelEnd, skipInitPos)
+    }
+    const NotAtBufferEdge = isForward ? (lnum) => lnum <= line('$') : (lnum) => lnum > 0
+    var lnum = line('.')
+    lnum = g:MoveInLine(lnum, GetIndices(lnum, true), keyToMove, isForward)
+    while NotAtBufferEdge(lnum)
+      lnum = g:MoveInLine(lnum, GetIndices(lnum, false), keyToMove, isForward)
+    endwhile
+  enddef
+  Context v:searchforward = 1
+    Before
+      let v:searchforward = 1
+    End
+    Context in normal mode
+      It moves forward using 'n' from the first line
+        normal! gg0
+        call s:moveWhole('n')
+      End
+      It moves backward using 'N' from the last line
+        normal! G$
+        call s:moveWhole('N')
+      End
+    End
+    Context in visual mode (when &selection is 'inclusive')
+      Before all
+        set selection=inclusive
+      End
+      After all
+        call g:Expect(&selection).to_equal('inclusive')
+        set selection&
+      End
+      Context characterwise - v
+        After
+          call g:Expect(mode()).to_equal('v')
+        End
+        It 'n'
+          " move the end of the selection
+          normal! gg0v
+          call s:moveWhole('n', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('n', v:false)
+        End
+        It 'N'
+          " move the start of the selection
+          normal! G$v
+          call s:moveWhole('N', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('N', v:false)
+        End
+      End
+      Context linewise - V
+        After
+          call g:Expect(mode()).to_equal('V')
+        End
+        It 'n'
+          " move the end of the selection
+          normal! gg0V
+          call s:moveWhole('n', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('n', v:false)
+        End
+        It 'N'
+          " move the start of the selection
+          normal! G$V
+          call s:moveWhole('N', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('N', v:false)
+        End
+      End
+      Context blockwise - <C-v>
+        After
+          call g:Expect(mode()).to_equal("\<C-v>")
+        End
+        It 'n'
+          " move the end of the selection
+          execute "normal! gg0\<C-v>"
+          call s:moveWhole('n', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('n', v:false)
+        End
+        It 'N'
+          " move the start of the selection
+          execute "normal! G$\<C-v>"
+          call s:moveWhole('N', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('N', v:false)
+        End
+      End
+    End
+    Context in visual mode (when &selection is 'exclusive')
+      Before all
+        set selection=exclusive
+      End
+      After all
+        call g:Expect(&selection).to_equal('exclusive')
+        set selection&
+      End
+      Context characterwise - v
+        After
+          call g:Expect(mode()).to_equal('v')
+        End
+        It 'n'
+          " move the end of the selection
+          normal! gg0v
+          call s:moveWhole('n', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('n', v:false)
+        End
+        It 'N'
+          " move the start of the selection
+          normal! G$v
+          call s:moveWhole('N', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('N', v:true)
+        End
+      End
+      Context linewise - V
+        After
+          call g:Expect(mode()).to_equal('V')
+        End
+        It 'n'
+          " move the end of the selection
+          normal! gg0V
+          call s:moveWhole('n', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('n', v:false)
+        End
+        It 'N'
+          " move the start of the selection
+          normal! G$V
+          call s:moveWhole('N', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('N', v:true)
+        End
+      End
+      Context blockwise - <C-v>
+        After
+          call g:Expect(mode()).to_equal("\<C-v>")
+        End
+        It 'n'
+          " move the end of the selection
+          execute "normal! gg0\<C-v>"
+          call s:moveWhole('n', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('n', v:false)
+        End
+        It 'N'
+          " move the start of the selection
+          execute "normal! G$\<C-v>"
+          call s:moveWhole('N', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('N', v:true)
+        End
+      End
+    End
+  End
+  Context v:searchforward = 0
+    Before
+      let v:searchforward = 0
+    End
+    Context in normal mode
+      It moves backward using 'n' from the last line
+        normal! G$
+        call s:moveWhole('n')
+      End
+      It moves forward using 'N' from the first line
+        normal! gg0
+        call s:moveWhole('N')
+      End
+    End
+    Context in visual mode (when &selection is 'inclusive')
+      Before all
+        set selection=inclusive
+      End
+      After all
+        call g:Expect(&selection).to_equal('inclusive')
+        set selection&
+      End
+      Context characterwise - v
+        After
+          call g:Expect(mode()).to_equal('v')
+        End
+        It 'n'
+          " move the start of the selection
+          normal! G$v
+          call s:moveWhole('n', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('n', v:false)
+        End
+        It 'N'
+          " move the end of the selection
+          normal! gg0v
+          call s:moveWhole('N', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('N', v:false)
+        End
+      End
+      Context linewise - V
+        After
+          call g:Expect(mode()).to_equal('V')
+        End
+        It 'n'
+          " move the start of the selection
+          normal! G$V
+          call s:moveWhole('n', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('n', v:false)
+        End
+        It 'N'
+          " move the end of the selection
+          normal! gg0V
+          call s:moveWhole('N', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('N', v:false)
+        End
+      End
+      Context blockwise - <C-v>
+        After
+          call g:Expect(mode()).to_equal("\<C-v>")
+        End
+        It 'n'
+          " move the start of the selection
+          execute "normal! G$\<C-v>"
+          call s:moveWhole('n', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('n', v:false)
+        End
+        It 'N'
+          " move the end of the selection
+          execute "normal! gg0\<C-v>"
+          call s:moveWhole('N', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('N', v:false)
+        End
+      End
+    End
+    Context in visual mode (when &selection is 'exclusive')
+      Before all
+        set selection=exclusive
+      End
+      After all
+        call g:Expect(&selection).to_equal('exclusive')
+        set selection&
+      End
+      Context characterwise - v
+        After
+          call g:Expect(mode()).to_equal('v')
+        End
+        It 'n'
+          " move the start of the selection
+          normal! G$v
+          call s:moveWhole('n', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('n', v:true)
+        End
+        It 'N'
+          " move the end of the selection
+          normal! gg0v
+          call s:moveWhole('N', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('N', v:false)
+        End
+      End
+      Context linewise - V
+        After
+          call g:Expect(mode()).to_equal('V')
+        End
+        It 'n'
+          " move the start of the selection
+          normal! G$V
+          call s:moveWhole('n', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('n', v:true)
+        End
+        It 'N'
+          " move the end of the selection
+          normal! gg0V
+          call s:moveWhole('N', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('N', v:false)
+        End
+      End
+      Context blockwise - <C-v>
+        After
+          call g:Expect(mode()).to_equal("\<C-v>")
+        End
+        It 'n'
+          " move the start of the selection
+          execute "normal! G$\<C-v>"
+          call s:moveWhole('n', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('n', v:true)
+        End
+        It 'N'
+          " move the end of the selection
+          execute "normal! gg0\<C-v>"
+          call s:moveWhole('N', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole('N', v:false)
+        End
+      End
+    End
+  End
+  Context unaffected by v:searchforward
+    Context in normal mode
+      It moves backward using '[n' from the last line
+        normal! G$
+        call s:moveWhole('[n')
+      End
+      It moves forward using ']n' from the first line
+        normal! gg0
+        call s:moveWhole(']n')
+      End
+      It moves backward using '[N' from the last line
+        normal! G$
+        call s:moveWhole('[N')
+      End
+      It moves forward using ']N' from the first line
+        normal! gg0
+        call s:moveWhole(']N')
+      End
+    End
+    Context in visual mode (when &selection is 'inclusive')
+      Before all
+        set selection=inclusive
+      End
+      After all
+        call g:Expect(&selection).to_equal('inclusive')
+        set selection&
+      End
+      Context characterwise - v
+        After
+          call g:Expect(mode()).to_equal('v')
+        End
+        It '[n'
+          " move the start of the selection
+          normal! G$v
+          call s:moveWhole('[n', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('[n', v:false)
+        End
+        It ']n'
+          " move the end of the selection
+          normal! gg0v
+          call s:moveWhole(']n', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole(']n', v:false)
+        End
+        It '[N'
+          " move the start of the selection
+          normal! G$v
+          call s:moveWhole('[N', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('[N', v:false)
+        End
+        It ']N'
+          " move the end of the selection
+          normal! gg0v
+          call s:moveWhole(']N', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole(']N', v:false)
+        End
+      End
+      Context linewise - V
+        After
+          call g:Expect(mode()).to_equal('V')
+        End
+        It '[n'
+          " move the start of the selection
+          normal! G$V
+          call s:moveWhole('[n', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('[n', v:false)
+        End
+        It ']n'
+          " move the end of the selection
+          normal! gg0V
+          call s:moveWhole(']n', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole(']n', v:false)
+        End
+        It '[N'
+          " move the start of the selection
+          normal! G$V
+          call s:moveWhole('[N', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('[N', v:false)
+        End
+        It ']N'
+          " move the end of the selection
+          normal! gg0V
+          call s:moveWhole(']N', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole(']N', v:false)
+        End
+      End
+      Context blockwise - <C-v>
+        After
+          call g:Expect(mode()).to_equal("\<C-v>")
+        End
+        It '[n'
+          " move the start of the selection
+          execute "normal! G$\<C-v>"
+          call s:moveWhole('[n', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('[n', v:false)
+        End
+        It ']n'
+          " move the end of the selection
+          execute "normal! gg0\<C-v>"
+          call s:moveWhole(']n', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole(']n', v:false)
+        End
+        It '[N'
+          " move the start of the selection
+          execute "normal! G$\<C-v>"
+          call s:moveWhole('[N', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('[N', v:false)
+        End
+        It ']N'
+          " move the end of the selection
+          execute "normal! gg0\<C-v>"
+          call s:moveWhole(']N', v:false)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole(']N', v:false)
+        End
+      End
+    End
+    Context in visual mode (when &selection is 'exclusive')
+      Before all
+        set selection=exclusive
+      End
+      After all
+        call g:Expect(&selection).to_equal('exclusive')
+        set selection&
+      End
+      Context characterwise - v
+        After
+          call g:Expect(mode()).to_equal('v')
+        End
+        It '[n'
+          " move the start of the selection
+          normal! G$v
+          call s:moveWhole('[n', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('[n', v:true)
+        End
+        It ']n'
+          " move the end of the selection
+          normal! gg0v
+          call s:moveWhole(']n', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole(']n', v:false)
+        End
+        It '[N'
+          " move the start of the selection
+          normal! G$v
+          call s:moveWhole('[N', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('[N', v:true)
+        End
+        It ']N'
+          " move the end of the selection
+          normal! gg0v
+          call s:moveWhole(']N', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole(']N', v:false)
+        End
+      End
+      Context linewise - V
+        After
+          call g:Expect(mode()).to_equal('V')
+        End
+        It '[n'
+          " move the start of the selection
+          normal! G$V
+          call s:moveWhole('[n', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('[n', v:true)
+        End
+        It ']n'
+          " move the end of the selection
+          normal! gg0V
+          call s:moveWhole(']n', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole(']n', v:false)
+        End
+        It '[N'
+          " move the start of the selection
+          normal! G$V
+          call s:moveWhole('[N', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('[N', v:true)
+        End
+        It ']N'
+          " move the end of the selection
+          normal! gg0V
+          call s:moveWhole(']N', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole(']N', v:false)
+        End
+      End
+      Context blockwise - <C-v>
+        After
+          call g:Expect(mode()).to_equal("\<C-v>")
+        End
+        It '[n'
+          " move the start of the selection
+          execute "normal! G$\<C-v>"
+          call s:moveWhole('[n', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('[n', v:true)
+        End
+        It ']n'
+          " move the end of the selection
+          execute "normal! gg0\<C-v>"
+          call s:moveWhole(']n', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole(']n', v:false)
+        End
+        It '[N'
+          " move the start of the selection
+          execute "normal! G$\<C-v>"
+          call s:moveWhole('[N', v:false)
+          " move the end of the selection
+          normal! o
+          call s:moveWhole('[N', v:true)
+        End
+        It ']N'
+          " move the end of the selection
+          execute "normal! gg0\<C-v>"
+          call s:moveWhole(']N', v:true)
+          " move the start of the selection
+          normal! o
+          call s:moveWhole(']N', v:false)
+        End
+      End
+    End
+  End
+End
+
+Context motions are used after operators
+  Before
+    " use line 1 to 3
+    call InitTestBuffer(s:samplelines[0 : 2])
+    let @/ = 'aaa'
+  End
+  Context d{motion} - delete
+    It 'dn' (exclusive)
+      normal! gg0
+      " delete a match and repeat
+      execute "normal d\<Plug>(craftyjump-search-n)"
+      call g:Expect(getline('.')).to_equal('aaa: bbb aaa bbb :aaa:')
+      call g:DotRepeat('aaa bbb :aaa:')
+      call g:DotRepeat('aaa:')
+      " delete 2 match
+      execute "normal d2\<Plug>(craftyjump-search-n)"
+      call g:Expect(getline('.')).to_equal('aaa:bbbaaa')
+      call g:DotRepeat('aaa: bbb aaa bbb :aaa:')
+      call g:DotRepeat('aaa:')
+    End
+    It 'dN' (exclusive)
+      normal! G$
+      " delete a match and repeat
+      execute "normal d\<Plug>(craftyjump-search-N)"
+      call g:Expect(getline('.')).to_equal(':aaa: bbb aaa bbb ::')
+      call g:DotRepeat(':aaa: bbb :')
+      call g:DotRepeat('::')
+      " delete 2 match
+      execute "normal d2\<Plug>(craftyjump-search-N)"
+      call g:Expect(getline('.')).to_equal('aaabbb::')
+      call g:DotRepeat(':aaa: bbb aaa bbb ::')
+      call g:DotRepeat('::')
+    End
+    It 'd[n' (exclusive)
+      normal! G$
+      " delete a match and repeat
+      execute "normal d\<Plug>(craftyjump-search-prev)"
+      call g:Expect(getline('.')).to_equal(':aaa: bbb aaa bbb ::')
+      call g:DotRepeat(':aaa: bbb :')
+      call g:DotRepeat('::')
+      " delete 2 match
+      execute "normal d2\<Plug>(craftyjump-search-prev)"
+      call g:Expect(getline('.')).to_equal('aaabbb::')
+      call g:DotRepeat(':aaa: bbb aaa bbb ::')
+      call g:DotRepeat('::')
+    End
+    It 'd]n' (exclusive)
+      normal! gg0
+      " delete a match and repeat
+      execute "normal d\<Plug>(craftyjump-search-next)"
+      call g:Expect(getline('.')).to_equal('aaa: bbb aaa bbb :aaa:')
+      call g:DotRepeat('aaa bbb :aaa:')
+      call g:DotRepeat('aaa:')
+      " delete 2 match
+      execute "normal d2\<Plug>(craftyjump-search-next)"
+      call g:Expect(getline('.')).to_equal('aaa:bbbaaa')
+      call g:DotRepeat('aaa: bbb aaa bbb :aaa:')
+      call g:DotRepeat('aaa:')
+    End
+    It 'd[N' (exclusive)
+      normal! G$
+      " delete a match and repeat
+      execute "normal d\<Plug>(craftyjump-search-first)"
+      call g:Expect(getline('.')).to_equal('::')
+    End
+    It 'd]N' (exclusive)
+      normal! gg0
+      " delete a match and repeat
+      execute "normal d\<Plug>(craftyjump-search-last)"
+      call g:Expect(getline('.')).to_equal('aaa:')
+    End
+  End
+  Context c{motion} - change
+    " after exiting insert mode, the cursor position shifts one to the left
+    It 'cn' (exclusive)
+      normal! gg0
+      " change a match and repeat
+      execute "normal c\<Plug>(craftyjump-search-n)"
+      call g:Expect(getline('.')).to_equal('aaa: bbb aaa bbb :aaa:')
+      call g:DotRepeat('aaa bbb :aaa:')
+      call g:DotRepeat('aaa:')
+      " change 2 match
+      execute "normal c2\<Plug>(craftyjump-search-n)"
+      call g:Expect(getline('.')).to_equal('aaa:bbbaaa')
+      call g:DotRepeat('aaa: bbb aaa bbb :aaa:')
+      call g:DotRepeat('aaa:')
+    End
+    It 'cN' (exclusive)
+      normal! G$
+      " change a match and repeat
+      execute "normal c\<Plug>(craftyjump-search-N)"
+      call g:Expect(getline('.')).to_equal(':aaa: bbb aaa bbb ::')
+      call g:DotRepeat(':aaa: bbb ::')
+      call g:DotRepeat(': ::')
+      " change 2 match
+      execute "normal c2\<Plug>(craftyjump-search-N)"
+      call g:Expect(getline('.')).to_equal('aaabbb:: ::')
+      call g:DotRepeat(':aaa: bbb aaa bbb ::: ::')
+      call g:DotRepeat(':::: ::')
+    End
+    It 'c[n' (exclusive)
+      normal! G$
+      " change a match and repeat
+      execute "normal c\<Plug>(craftyjump-search-prev)"
+      call g:Expect(getline('.')).to_equal(':aaa: bbb aaa bbb ::')
+      call g:DotRepeat(':aaa: bbb ::')
+      call g:DotRepeat(': ::')
+      " change 2 match
+      execute "normal c2\<Plug>(craftyjump-search-prev)"
+      call g:Expect(getline('.')).to_equal('aaabbb:: ::')
+      call g:DotRepeat(':aaa: bbb aaa bbb ::: ::')
+      call g:DotRepeat(':::: ::')
+    End
+    It 'c]n' (exclusive)
+      normal! gg0
+      " change a match and repeat
+      execute "normal c\<Plug>(craftyjump-search-next)"
+      call g:Expect(getline('.')).to_equal('aaa: bbb aaa bbb :aaa:')
+      call g:DotRepeat('aaa bbb :aaa:')
+      call g:DotRepeat('aaa:')
+      " change 2 match
+      execute "normal c2\<Plug>(craftyjump-search-next)"
+      call g:Expect(getline('.')).to_equal('aaa:bbbaaa')
+      call g:DotRepeat('aaa: bbb aaa bbb :aaa:')
+      call g:DotRepeat('aaa:')
+    End
+    It 'c[N' (exclusive)
+      normal! G$
+      " change a match and repeat
+      execute "normal c\<Plug>(craftyjump-search-first)"
+      call g:Expect(getline('.')).to_equal('::')
+    End
+    It 'c]N' (exclusive)
+      normal! gg0
+      " change a match and repeat
+      execute "normal c\<Plug>(craftyjump-search-last)"
+      call g:Expect(getline('.')).to_equal('aaa:')
+    End
+  End
+End
+
+End
+
