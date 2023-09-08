@@ -607,6 +607,394 @@ Context motions simply move the cursor
   End
 End
 
+Context motions search under the cursor
+  Before
+    " use line 1 to 3
+    call InitTestBuffer(s:samplelines[0 : 2])
+  End
+  def s:starWhole(testmode: string, motion: string)
+    # search forward from the current position to the end of the buffer, or backward to the start
+    # @param {'n' | 'v(0)' | 'v(1)' | 'v(2)' | 'v(3)' | 'V' | '<C-v>'} testmode
+    # @param {'*' | '#' | 'g*' | 'g#'} motion
+    const isForward = motion ==# '*' || motion ==# 'g*'
+    const keyToMove = "\<Plug>(craftyjump-search-" .. motion .. ')'
+    const GetIndices = (lnum) => {
+      const offset_to_posline = {
+        'n':     {'*': 16, '#': 24, 'g*': 20, 'g#': 24},
+        'v(0)':  {'*': 28, '#': 28, 'g*': 28, 'g#': 28},
+        'v(1)':  {'*': 32, '#': 32, 'g*': 36, 'g#': 36},
+        'v(2)':  {'*': 40, '#': 40, 'g*': 44, 'g#': 44},
+        'v(3)':  {'*': 48, '#': 48, 'g*': 52, 'g#': 52},
+        'V':     {'*': 56, '#': 56, 'g*': 56, 'g#': 56},
+        '<C-v>': {'*': 60, '#': 64, 'g*': 60, 'g#': 64} }[testmode][motion] - 1
+      return g:GetIndices(s:samplelines[lnum + offset_to_posline], isForward, false, false)
+    }
+    const NotAtBufferEdge = isForward ? (lnum) => lnum <= line('$') : (lnum) => lnum > 0
+    var cnt = 1
+    var lnum = line('.')
+    while NotAtBufferEdge(lnum)
+      # skip if the line is blank
+      if getline(lnum) !=# ''
+        # move the cursor and check if the movement to each index is correct
+        for index in GetIndices(lnum)
+          execute 'normal' (testmode ==# 'n' ? cnt > 2 ? "\<C-o>" : '' : 'gv') .. cnt .. keyToMove
+          g:Expect(null).to_be_at_position([lnum, index])
+          cnt += 1
+        endfor
+      endif
+      lnum += isForward ? 1 : -1
+    endwhile
+  enddef
+  Context in normal mode
+    It moves forward using '*' from the first line
+      normal! gg0
+      call s:starWhole('n', '*')
+    End
+    It moves backward using '#' from the last line
+      normal! G$
+      call s:starWhole('n', '#')
+    End
+    It moves forward using 'g*' from the first line
+      normal! gg0
+      call s:starWhole('n', 'g*')
+    End
+    It moves backward using 'g#' from the last line
+      normal! G$
+      call s:starWhole('n', 'g#')
+    End
+  End
+  Context in visual mode (when &selection is 'inclusive')
+    Before all
+      set selection=inclusive
+    End
+    After all
+      call g:Expect(&selection).to_equal('inclusive')
+      set selection&
+    End
+    Context characterwise - v(0)
+      It '*'
+        " set visual selection to search
+        execute "normal! gg0viW\<Esc>"
+        call s:starWhole('v(0)', '*')
+        call g:Expect(@/).to_equal('\V:aaa:')
+      End
+      It '#'
+        " set visual selection to search
+        execute "normal! G$viW\<Esc>"
+        call s:starWhole('v(0)', '#')
+        call g:Expect(@/).to_equal('\V:aaa:')
+      End
+      It 'g*'
+        " set visual selection to search
+        execute "normal! gg0viW\<Esc>"
+        call s:starWhole('v(0)', 'g*')
+        call g:Expect(@/).to_equal('\V:aaa:')
+      End
+      It 'g#'
+        " set visual selection to search
+        execute "normal! G$viW\<Esc>"
+        call s:starWhole('v(0)', 'g#')
+        call g:Expect(@/).to_equal('\V:aaa:')
+      End
+    End
+    Context characterwise - v(1)
+      It '*'
+        " set visual selection to search
+        execute "normal! gg0viWol\<Esc>"
+        call s:starWhole('v(1)', '*')
+        call g:Expect(@/).to_equal('\V\<aaa:')
+      End
+      It '#'
+        " set visual selection to search
+        execute "normal! G$viWol\<Esc>"
+        call s:starWhole('v(1)', '#')
+        call g:Expect(@/).to_equal('\V\<aaa:')
+      End
+      It 'g*'
+        " set visual selection to search
+        execute "normal! gg0viWol\<Esc>"
+        call s:starWhole('v(1)', 'g*')
+        call g:Expect(@/).to_equal('\Vaaa:')
+      End
+      It 'g#'
+        " set visual selection to search
+        execute "normal! G$viWol\<Esc>"
+        call s:starWhole('v(1)', 'g#')
+        call g:Expect(@/).to_equal('\Vaaa:')
+      End
+    End
+    Context characterwise - v(2)
+      It '*'
+        " set visual selection to search
+        execute "normal! gg0viWh\<Esc>"
+        call s:starWhole('v(2)', '*')
+        call g:Expect(@/).to_equal('\V:aaa\>')
+      End
+      It '#'
+        " set visual selection to search
+        execute "normal! G$viWh\<Esc>"
+        call s:starWhole('v(2)', '#')
+        call g:Expect(@/).to_equal('\V:aaa\>')
+      End
+      It 'g*'
+        " set visual selection to search
+        execute "normal! gg0viWh\<Esc>"
+        call s:starWhole('v(2)', 'g*')
+        call g:Expect(@/).to_equal('\V:aaa')
+      End
+      It 'g#'
+        " set visual selection to search
+        execute "normal! G$viWh\<Esc>"
+        call s:starWhole('v(2)', 'g#')
+        call g:Expect(@/).to_equal('\V:aaa')
+      End
+    End
+    Context characterwise - v(3)
+      It '*'
+        " set visual selection to search
+        execute "normal! gg0viWhol\<Esc>"
+        call s:starWhole('v(3)', '*')
+        call g:Expect(@/).to_equal('\V\<aaa\>')
+      End
+      It '#'
+        " set visual selection to search
+        execute "normal! G$viWhol\<Esc>"
+        call s:starWhole('v(3)', '#')
+        call g:Expect(@/).to_equal('\V\<aaa\>')
+      End
+      It 'g*'
+        " set visual selection to search
+        execute "normal! gg0viWhol\<Esc>"
+        call s:starWhole('v(3)', 'g*')
+        call g:Expect(@/).to_equal('\Vaaa')
+      End
+      It 'g#'
+        " set visual selection to search
+        execute "normal! G$viWhol\<Esc>"
+        call s:starWhole('v(3)', 'g#')
+        call g:Expect(@/).to_equal('\Vaaa')
+      End
+    End
+    Context linewise - V
+      It '*'
+        " set visual selection to search
+        execute "normal! gg0V\<Esc>"
+        call s:starWhole('V', '*')
+        call g:Expect(@/).to_equal('\V:aaa: bbb aaa bbb :aaa:\n')
+      End
+      It '#'
+        " set visual selection to search
+        execute "normal! G$V\<Esc>"
+        call s:starWhole('V', '#')
+        call g:Expect(@/).to_equal('\V:aaa: bbb aaa bbb :aaa:\n')
+      End
+      It 'g*'
+        " set visual selection to search
+        execute "normal! gg0V\<Esc>"
+        call s:starWhole('V', 'g*')
+        call g:Expect(@/).to_equal('\V:aaa: bbb aaa bbb :aaa:\n')
+      End
+      It 'g#'
+        " set visual selection to search
+        execute "normal! G$V\<Esc>"
+        call s:starWhole('V', 'g#')
+        call g:Expect(@/).to_equal('\V:aaa: bbb aaa bbb :aaa:\n')
+      End
+    End
+    Context blockwise - <C-v>
+      It '*'
+        " set visual selection to search
+        execute "normal! gg0\<C-v>jo\<Esc>"
+        call s:starWhole('<C-v>', '*')
+        call g:Expect(@/).to_equal('\V:\n:')
+      End
+      It '#'
+        " set visual selection to search
+        execute "normal! G$F:\<C-v>ko\<Esc>"
+        call s:starWhole('<C-v>', '#')
+        call g:Expect(@/).to_equal('\V:\n:')
+      End
+      It 'g*'
+        " set visual selection to search
+        execute "normal! gg0\<C-v>jo\<Esc>"
+        call s:starWhole('<C-v>', 'g*')
+        call g:Expect(@/).to_equal('\V:\n:')
+      End
+      It 'g#'
+        " set visual selection to search
+        execute "normal! G$F:\<C-v>ko\<Esc>"
+        call s:starWhole('<C-v>', 'g#')
+        call g:Expect(@/).to_equal('\V:\n:')
+      End
+    End
+  End
+  Context in visual mode (when &selection is 'exclusive')
+    Before all
+      set selection=exclusive
+    End
+    After all
+      call g:Expect(&selection).to_equal('exclusive')
+      set selection&
+    End
+    Context characterwise - v(0)
+      It '*'
+        " set visual selection to search
+        execute "normal! gg0viW\<Esc>"
+        call s:starWhole('v(0)', '*')
+        call g:Expect(@/).to_equal('\V:aaa:')
+      End
+      It '#'
+        " set visual selection to search
+        execute "normal! G$viW\<Esc>"
+        call s:starWhole('v(0)', '#')
+        call g:Expect(@/).to_equal('\V:aaa:')
+      End
+      It 'g*'
+        " set visual selection to search
+        execute "normal! gg0viW\<Esc>"
+        call s:starWhole('v(0)', 'g*')
+        call g:Expect(@/).to_equal('\V:aaa:')
+      End
+      It 'g#'
+        " set visual selection to search
+        execute "normal! G$viW\<Esc>"
+        call s:starWhole('v(0)', 'g#')
+        call g:Expect(@/).to_equal('\V:aaa:')
+      End
+    End
+    Context characterwise - v(1)
+      It '*'
+        " set visual selection to search
+        execute "normal! gg0viWol\<Esc>"
+        call s:starWhole('v(1)', '*')
+        call g:Expect(@/).to_equal('\V\<aaa:')
+      End
+      It '#'
+        " set visual selection to search
+        execute "normal! G$viWol\<Esc>"
+        call s:starWhole('v(1)', '#')
+        call g:Expect(@/).to_equal('\V\<aaa:')
+      End
+      It 'g*'
+        " set visual selection to search
+        execute "normal! gg0viWol\<Esc>"
+        call s:starWhole('v(1)', 'g*')
+        call g:Expect(@/).to_equal('\Vaaa:')
+      End
+      It 'g#'
+        " set visual selection to search
+        execute "normal! G$viWol\<Esc>"
+        call s:starWhole('v(1)', 'g#')
+        call g:Expect(@/).to_equal('\Vaaa:')
+      End
+    End
+    Context characterwise - v(2)
+      It '*'
+        " set visual selection to search
+        execute "normal! gg0viWh\<Esc>"
+        call s:starWhole('v(2)', '*')
+        call g:Expect(@/).to_equal('\V:aaa\>')
+      End
+      It '#'
+        " set visual selection to search
+        execute "normal! G$viWh\<Esc>"
+        call s:starWhole('v(2)', '#')
+        call g:Expect(@/).to_equal('\V:aaa\>')
+      End
+      It 'g*'
+        " set visual selection to search
+        execute "normal! gg0viWh\<Esc>"
+        call s:starWhole('v(2)', 'g*')
+        call g:Expect(@/).to_equal('\V:aaa')
+      End
+      It 'g#'
+        " set visual selection to search
+        execute "normal! G$viWh\<Esc>"
+        call s:starWhole('v(2)', 'g#')
+        call g:Expect(@/).to_equal('\V:aaa')
+      End
+    End
+    Context characterwise - v(3)
+      It '*'
+        " set visual selection to search
+        execute "normal! gg0viWhol\<Esc>"
+        call s:starWhole('v(3)', '*')
+        call g:Expect(@/).to_equal('\V\<aaa\>')
+      End
+      It '#'
+        " set visual selection to search
+        execute "normal! G$viWhol\<Esc>"
+        call s:starWhole('v(3)', '#')
+        call g:Expect(@/).to_equal('\V\<aaa\>')
+      End
+      It 'g*'
+        " set visual selection to search
+        execute "normal! gg0viWhol\<Esc>"
+        call s:starWhole('v(3)', 'g*')
+        call g:Expect(@/).to_equal('\Vaaa')
+      End
+      It 'g#'
+        " set visual selection to search
+        execute "normal! G$viWhol\<Esc>"
+        call s:starWhole('v(3)', 'g#')
+        call g:Expect(@/).to_equal('\Vaaa')
+      End
+    End
+    Context linewise - V
+      It '*'
+        " set visual selection to search
+        execute "normal! gg0V\<Esc>"
+        call s:starWhole('V', '*')
+        call g:Expect(@/).to_equal('\V:aaa: bbb aaa bbb :aaa:\n')
+      End
+      It '#'
+        " set visual selection to search
+        execute "normal! G$V\<Esc>"
+        call s:starWhole('V', '#')
+        call g:Expect(@/).to_equal('\V:aaa: bbb aaa bbb :aaa:\n')
+      End
+      It 'g*'
+        " set visual selection to search
+        execute "normal! gg0V\<Esc>"
+        call s:starWhole('V', 'g*')
+        call g:Expect(@/).to_equal('\V:aaa: bbb aaa bbb :aaa:\n')
+      End
+      It 'g#'
+        " set visual selection to search
+        execute "normal! G$V\<Esc>"
+        call s:starWhole('V', 'g#')
+        call g:Expect(@/).to_equal('\V:aaa: bbb aaa bbb :aaa:\n')
+      End
+    End
+    Context blockwise - <C-v>
+      It '*'
+        " set visual selection to search
+        execute "normal! gg0\<C-v>jo\<Esc>"
+        call s:starWhole('<C-v>', '*')
+        call g:Expect(@/).to_equal('\V:\n:')
+      End
+      It '#'
+        " set visual selection to search
+        execute "normal! G$F:\<C-v>ko\<Esc>"
+        call s:starWhole('<C-v>', '#')
+        call g:Expect(@/).to_equal('\V:\n:')
+      End
+      It 'g*'
+        " set visual selection to search
+        execute "normal! gg0\<C-v>jo\<Esc>"
+        call s:starWhole('<C-v>', 'g*')
+        call g:Expect(@/).to_equal('\V:\n:')
+      End
+      It 'g#'
+        " set visual selection to search
+        execute "normal! G$F:\<C-v>ko\<Esc>"
+        call s:starWhole('<C-v>', 'g#')
+        call g:Expect(@/).to_equal('\V:\n:')
+      End
+    End
+  End
+End
+
 Context motions are used after operators
   Before
     " use line 1 to 3
@@ -749,4 +1137,3 @@ Context motions are used after operators
 End
 
 End
-
