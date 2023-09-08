@@ -1,27 +1,67 @@
 :aaa: bbb aaa bbb :aaa:
-aaabbb:aaa:bbbaaa
+:aaabbb:aaa:bbbaaa:
 :aaa: bbb aaa bbb :aaa:
-[n][N][[n][]n] ------------------------------
+[n][N][[n][]n] aaa ------------------------------
 :#aa: bbb #aa bbb :#aa:
-#aabbb:#aa:bbb#aa
+:#aabbb:#aa:bbb#aa:
 :#aa: bbb #aa bbb :#aa:
-[*] ------------------------------
-##aa: bbb #aa bbb :#aa:
-aaabbb:#aa:bbbaaa
-:#aa: bbb #aa bbb :#aa:
-[g*] ------------------------------
-##aa: bbb #aa bbb :#aa:
-#aabbb:#aa:bbb#aa
-:#aa: bbb #aa bbb :#aa:
-[#][g#] ------------------------------
-#aaa# bbb aaa bbb #aaa#
-aaabbb#aaa#bbbaaa
-#aaa# bbb aaa bbb #aaa#
 [[N] ------------------------------
 :#aa: bbb aaa bbb :aaa:
-aaabbb:aaa:bbbaaa
+:aaabbb:aaa:bbbaaa:
 :aaa: bbb aaa bbb :aaa:
 []N] ------------------------------
 :aaa: bbb aaa bbb :aaa:
-aaabbb:aaa:bbbaaa
+:aaabbb:aaa:bbbaaa:
 :aaa: bbb aaa bbb :#aa:
+[*] \<aaa\> ------------------------------ n
+##aa: bbb #aa bbb :#aa:
+:aaabbb:#aa:bbbaaa:
+:#aa: bbb #aa bbb :#aa:
+[g*] aaa ------------------------------ n
+##aa: bbb #aa bbb :#aa:
+:#aabbb:#aa:bbb#aa:
+:#aa: bbb #aa bbb :#aa:
+[#][g#] : ------------------------------ n
+#aaa# bbb aaa bbb #aaa#
+#aaabbb#aaa#bbbaaa#
+#aaa# bbb aaa bbb #aaa#
+[*][#][g*][g#] :aaa: ------------------------------ v(0)
+#aaa: bbb aaa bbb #aaa:
+:aaabbb#aaa:bbbaaa:
+#aaa: bbb aaa bbb #aaa:
+[*][#] \<aaa: ------------------------------ v(1)
+:#aa: bbb aaa bbb :#aa:
+:aaabbb:#aa:bbbaaa:
+:#aa: bbb aaa bbb :#aa:
+[g*][g#] aaa: ------------------------------ v(1)
+:#aa: bbb aaa bbb :#aa:
+:aaabbb:#aa:bbb#aa:
+:#aa: bbb aaa bbb :#aa:
+[*][#] :aaa\>------------------------------ v(2)
+#aaa: bbb aaa bbb #aaa:
+:aaabbb#aaa:bbbaaa:
+#aaa: bbb aaa bbb #aaa:
+[g*][g#] :aaa ------------------------------ v(2)
+#aaa: bbb aaa bbb #aaa:
+#aaabbb#aaa:bbbaaa:
+#aaa: bbb aaa bbb #aaa:
+[*][#] \<aaa\> ------------------------------ v(3)
+:#aa: bbb #aa bbb :#aa:
+:aaabbb:#aa:bbbaaa:
+:#aa: bbb #aa bbb :#aa:
+[g*][g#] aaa ------------------------------ v(3)
+:#aa: bbb #aa bbb :#aa:
+:#aabbb:#aa:bbb#aa:
+:#aa: bbb #aa bbb :#aa:
+[*][#][g*][g#] :aaa: bbb aaa bbb :aaa:\n ------------------------------ V
+#aaa: bbb aaa bbb :aaa:
+:aaabbb:aaa:bbbaaa:
+#aaa: bbb aaa bbb :aaa:
+[*][g*] :\n: ------------------------------ <C-v>
+#aaa: bbb aaa bbb :aaa#
+:aaabbb:aaa:bbbaaa#
+:aaa: bbb aaa bbb :aaa:
+[#][g#] :\n: ------------------------------ <C-v>
+:aaa: bbb aaa bbb :aaa#
+:aaabbb:aaa:bbbaaa#
+:aaa: bbb aaa bbb :aaa:

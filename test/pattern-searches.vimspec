@@ -17,7 +17,7 @@ Context motions simply move the cursor
     const isForward = motion ==# (v:searchforward ? 'n' : 'N') || motion ==# ']n' || motion ==# ']N'
     const keyToMove = "\<Plug>(craftyjump-search-" .. get({'[n': 'prev', ']n': 'next', '[N': 'first', ']N': 'last'}, motion, motion) .. ')'
     const GetIndices = (lnum, skipInitPos) => {
-      const offset_to_posline = {'n': 4, 'N': 4, '[n': 4, ']n': 4, '[N': 20, ']N': 24}[motion] - 1
+      const offset_to_posline = {'n': 4, 'N': 4, '[n': 4, ']n': 4, '[N': 8, ']N': 12}[motion] - 1
       return g:GetIndices(s:samplelines[lnum + offset_to_posline], isForward, isExSelEnd, skipInitPos)
     }
     const NotAtBufferEdge = isForward ? (lnum) => lnum <= line('$') : (lnum) => lnum > 0
@@ -623,7 +623,7 @@ Context motions are used after operators
       call g:DotRepeat('aaa:')
       " delete 2 match
       execute "normal d2\<Plug>(craftyjump-search-n)"
-      call g:Expect(getline('.')).to_equal('aaa:bbbaaa')
+      call g:Expect(getline('.')).to_equal('aaa:bbbaaa:')
       call g:DotRepeat('aaa: bbb aaa bbb :aaa:')
       call g:DotRepeat('aaa:')
     End
@@ -636,7 +636,7 @@ Context motions are used after operators
       call g:DotRepeat('::')
       " delete 2 match
       execute "normal d2\<Plug>(craftyjump-search-N)"
-      call g:Expect(getline('.')).to_equal('aaabbb::')
+      call g:Expect(getline('.')).to_equal(':aaabbb::')
       call g:DotRepeat(':aaa: bbb aaa bbb ::')
       call g:DotRepeat('::')
     End
@@ -649,7 +649,7 @@ Context motions are used after operators
       call g:DotRepeat('::')
       " delete 2 match
       execute "normal d2\<Plug>(craftyjump-search-prev)"
-      call g:Expect(getline('.')).to_equal('aaabbb::')
+      call g:Expect(getline('.')).to_equal(':aaabbb::')
       call g:DotRepeat(':aaa: bbb aaa bbb ::')
       call g:DotRepeat('::')
     End
@@ -662,7 +662,7 @@ Context motions are used after operators
       call g:DotRepeat('aaa:')
       " delete 2 match
       execute "normal d2\<Plug>(craftyjump-search-next)"
-      call g:Expect(getline('.')).to_equal('aaa:bbbaaa')
+      call g:Expect(getline('.')).to_equal('aaa:bbbaaa:')
       call g:DotRepeat('aaa: bbb aaa bbb :aaa:')
       call g:DotRepeat('aaa:')
     End
@@ -690,7 +690,7 @@ Context motions are used after operators
       call g:DotRepeat('aaa:')
       " change 2 match
       execute "normal c2\<Plug>(craftyjump-search-n)"
-      call g:Expect(getline('.')).to_equal('aaa:bbbaaa')
+      call g:Expect(getline('.')).to_equal('aaa:bbbaaa:')
       call g:DotRepeat('aaa: bbb aaa bbb :aaa:')
       call g:DotRepeat('aaa:')
     End
@@ -703,7 +703,7 @@ Context motions are used after operators
       call g:DotRepeat(': ::')
       " change 2 match
       execute "normal c2\<Plug>(craftyjump-search-N)"
-      call g:Expect(getline('.')).to_equal('aaabbb:: ::')
+      call g:Expect(getline('.')).to_equal(':aaabbb:: ::')
       call g:DotRepeat(':aaa: bbb aaa bbb ::: ::')
       call g:DotRepeat(':::: ::')
     End
@@ -716,7 +716,7 @@ Context motions are used after operators
       call g:DotRepeat(': ::')
       " change 2 match
       execute "normal c2\<Plug>(craftyjump-search-prev)"
-      call g:Expect(getline('.')).to_equal('aaabbb:: ::')
+      call g:Expect(getline('.')).to_equal(':aaabbb:: ::')
       call g:DotRepeat(':aaa: bbb aaa bbb ::: ::')
       call g:DotRepeat(':::: ::')
     End
@@ -729,7 +729,7 @@ Context motions are used after operators
       call g:DotRepeat('aaa:')
       " change 2 match
       execute "normal c2\<Plug>(craftyjump-search-next)"
-      call g:Expect(getline('.')).to_equal('aaa:bbbaaa')
+      call g:Expect(getline('.')).to_equal('aaa:bbbaaa:')
       call g:DotRepeat('aaa: bbb aaa bbb :aaa:')
       call g:DotRepeat('aaa:')
     End
