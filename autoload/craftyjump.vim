@@ -580,7 +580,7 @@ export def SearchPattern(isForward: bool, pat: string, cnt = v:count): bool # {{
   var isMoved: bool
   if cnt < 2
     # check if the pattern is found (do not move the cursor)
-    isMoved = search(pat, isForward ? 'nW' : 'nbW') > 0
+    isMoved = search(pat, isForward ? 'n' : 'nb') > 0
   else
     # go to the [count - 1]th match
     const prevpos = getcursorcharpos()
