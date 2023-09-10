@@ -164,13 +164,18 @@ def DoMotion(motion: string, Move: func(number): bool, SpecialMove: func(number,
     execute 'normal!' (mode[2] ?? 'v')
     # temporarily override &selection, then restore it after the operator is done
     const sel = &selection
+    &selection = IsExclusiveMotion(motion) ? 'exclusive' : 'inclusive'
+    const posBeforeMoving = getcursorcharpos()
     try
-      &selection = IsExclusiveMotion(motion) ? 'exclusive' : 'inclusive'
-      const posBeforeMoving = getcursorcharpos()
       const isMoved = Move(cnt)
       if isMoved && SpecialMove != null_function
         SpecialMove(cnt, posBeforeMoving)
       endif
+    catch
+      echohl ErrorMsg | echomsg substitute(v:exception, '^Vim\%((\a\+)\)\=:', '', '') | echohl None
+      # cancel the operator
+      execute "normal! \<Esc>" # stop visual mode
+      setcharpos('.', posBeforeMoving)
     finally
       timer_start(100, (_) => {
         &selection = sel
