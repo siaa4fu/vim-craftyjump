@@ -8,10 +8,11 @@ def IsCharUnderCursor(regexp: string, pos: list<number>, line = getline(pos[1]))
   # @return {bool} - whether the character under the cursor is a keyword character
   return line[pos[2] - 1] =~# regexp
 enddef # }}}
-def GetWordUnderCursor(): string # {{{
+def GetWordUnderCursor(forceCword = false): string # {{{
+  # @param {bool=} forceCword - always return <cword> even if the selection exists in visual mode
   # @return {string} - <cword> or the selection in visual mode
   var cword: string
-  if mode() !~# "[vV\<C-v>]"
+  if forceCword || mode() !~# "[vV\<C-v>]"
     cword = expand('<cword>')
   else
     const RestoreReg_unnamed = function('setreg', ['', getreginfo('')])
@@ -501,13 +502,14 @@ def RepeatSearch(motion: string, cnt: number): bool # {{{
   endif
   return isMoved
 enddef # }}}
-def StarSearch(motion: string): bool # {{{
+def StarSearch(motion: string, forceCword: bool, cnt: number): bool # {{{
   # @param {'*' | '#' | 'g*' | 'g#'} motion
+  # @param {bool} forceCword - always search for <cword> even if the selection exists in visual mode
+  # @param {number} cnt - v:count
   # @return {bool} - whether the pattern has found
-  const cnt = v:count
   const isForward = IsForwardMotion(motion)
   var isMoved: bool
-  const cword = escape(GetWordUnderCursor(), '\/')
+  const cword = escape(GetWordUnderCursor(forceCword), '\/')
   if cword ==# ''
     # do not search if the string under the cursor is empty, like E348 (echo as a message)
     echohl ErrorMsg | echomsg 'No string under cursor' | echohl None
@@ -567,7 +569,15 @@ export def Search(motion: string)
     DoMotion(motion,
       function(RepeatSearch, [motion]))
   elseif motion ==# '*' || motion ==# '#' || motion ==# 'g*' || motion ==# 'g#'
-    StarSearch(motion)
+    DoMotion(motion,
+      function(StarSearch, [motion, mode(true) =~# '^no']),
+      (cnt, _) => {
+        if cnt < 2
+          # when searching without moving the cursor, select the match and operate on it
+          execute "normal! \<Esc>" # temporarily stop visual mode
+          execute 'normal! gn' .. (visualmode() !=# 'v' ? visualmode() : '')
+        endif
+      })
   elseif motion ==# '[n' || motion ==# ']n' || motion ==# '[N' || motion ==# ']N'
     DoMotion(motion,
       function(SearchJump, [motion]))
