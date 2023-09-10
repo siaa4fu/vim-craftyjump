@@ -596,8 +596,8 @@ export def SearchPattern(isForward: bool, pat: string, cnt = v:count): bool # {{
   histadd('/', pat)
   var isMoved: bool
   if cnt < 2
-    # check if the pattern is found (do not move the cursor)
-    isMoved = search(pat, isForward ? 'n' : 'nb') > 0
+    # check if the pattern is found
+    isMoved = searchcount().total > 0
   else
     # go to the [count - 1]th match
     const prevpos = getcursorcharpos()
