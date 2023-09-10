@@ -200,6 +200,9 @@ Context motions simply move the cursor
     Before all
       set nowrap
     End
+    After all
+      set wrap&
+    End
     Context in normal mode
       It moves backward using '<home>' from the last line
         normal! G$
@@ -470,6 +473,9 @@ Context motions are used after operators
   Context nowrap (when &wrap is off)
     Before all
       set nowrap
+    End
+    After all
+      set wrap&
     End
     Context d{motion} - delete
       It 'd<home>' (exclusive)
