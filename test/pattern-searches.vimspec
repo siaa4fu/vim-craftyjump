@@ -1066,6 +1066,117 @@ Context motions are used after operators
       execute "normal d\<Plug>(craftyjump-search-last)"
       call g:Expect(getline('.')).to_equal('aaa:')
     End
+    It 'd*' (exclusive)
+      normal! gg0
+      " delete a match and repeat
+      execute "normal d\<Plug>(craftyjump-search-*)"
+      call g:Expect(getline('.')).to_equal(':: bbb aaa bbb :aaa:')
+      call g:DotRepeat('::  aaa bbb :aaa:')
+      call g:DotRepeat('::   bbb :aaa:')
+      call g:DotRepeat('::    :aaa:')
+      call g:DotRepeat('::    ::')
+      call g:DotRepeat('::    ')
+      " No string under cursor
+      call g:DotRepeat('::    ')
+    End
+    It 'd2*'/'d3*' (exclusive)
+      normal! gg0
+      " delete to a match and repeat
+      execute "normal d2\<Plug>(craftyjump-search-*)"
+      call g:Expect(getline('.')).to_equal('aaa: bbb aaa bbb :aaa:')
+      call g:DotRepeat('aaa bbb :aaa:')
+      call g:DotRepeat('aaa:')
+      " next line
+      call g:DotRepeat('aaa:bbbaaa:')
+      call g:DotRepeat('aaa: bbb aaa bbb :aaa:')
+      execute "normal d3\<Plug>(craftyjump-search-*)"
+      call g:Expect(getline('.')).to_equal('aaa:')
+    End
+    It 'd#' (exclusive)
+      normal! G$
+      " delete a match and repeat
+      execute "normal d\<Plug>(craftyjump-search-#)"
+      call g:Expect(getline('.')).to_equal(':aaa: bbb aaa bbb :aaa')
+      call g:DotRepeat(':aaa: bbb aaa bbb :')
+      call g:DotRepeat(':aaa: bbb aaa bbb ')
+      " No string under cursor
+      call g:DotRepeat(':aaa: bbb aaa bbb ')
+    End
+    It 'd2#'/'d3#' (exclusive)
+      normal! G$
+      " delete to a match and repeat
+      execute "normal d2\<Plug>(craftyjump-search-#)"
+      call g:Expect(getline('.')).to_equal(':aaa: bbb aaa bbb :')
+      call g:DotRepeat(':aaa:')
+      call g:DotRepeat(':')
+      " next line
+      call g:DotRepeat(':aaabbb:aaa:bbbaaa:')
+      call g:DotRepeat(':aaabbb:aaa:')
+      call g:DotRepeat(':aaabbb:')
+      call g:DotRepeat(':')
+      execute "normal d3\<Plug>(craftyjump-search-#)"
+      call g:Expect(getline('.')).to_equal(':aaa: bbb aaa bbb :')
+      call g:DotRepeat(':')
+    End
+    It 'dg*' (exclusive)
+      normal! gg0
+      " delete a match and repeat
+      execute "normal d\<Plug>(craftyjump-search-g*)"
+      call g:Expect(getline('.')).to_equal(':: bbb aaa bbb :aaa:')
+      call g:DotRepeat('::  aaa bbb :aaa:')
+      call g:DotRepeat('::   bbb :aaa:')
+      call g:DotRepeat('::    :aaa:')
+      call g:DotRepeat('::    ::')
+      call g:DotRepeat('::    ')
+      " No string under cursor
+      call g:DotRepeat('::    ')
+    End
+    It 'd2g*'/'d3g*' (exclusive)
+      normal! gg0
+      " delete to a match and repeat
+      execute "normal d2\<Plug>(craftyjump-search-g*)"
+      call g:Expect(getline('.')).to_equal('aaa: bbb aaa bbb :aaa:')
+      call g:DotRepeat('aaa bbb :aaa:')
+      call g:DotRepeat('aaa:')
+      " next line
+      call g:DotRepeat('aaabbb:aaa:bbbaaa:')
+      call g:DotRepeat('aabbb:aaa:bbbaaa:')
+      call g:DotRepeat('abbb:aaa:bbbaaa:')
+      call g:DotRepeat('bbb:aaa:bbbaaa:')
+      call g:DotRepeat('bbbaaa:')
+      call g:DotRepeat('bbaaa:')
+      call g:DotRepeat('baaa:')
+      call g:DotRepeat('aaa:')
+      call g:DotRepeat('aaa: bbb aaa bbb :aaa:')
+      execute "normal d3\<Plug>(craftyjump-search-g*)"
+      call g:Expect(getline('.')).to_equal('aaa:')
+    End
+    It 'dg#' (exclusive)
+      normal! G$
+      " delete a match and repeat
+      execute "normal d\<Plug>(craftyjump-search-g#)"
+      call g:Expect(getline('.')).to_equal(':aaa: bbb aaa bbb :aaa')
+      call g:DotRepeat(':aaa: bbb aaa bbb :')
+      call g:DotRepeat(':aaa: bbb aaa bbb ')
+      " No string under cursor
+      call g:DotRepeat(':aaa: bbb aaa bbb ')
+    End
+    It 'd2g#'/'d3g#' (exclusive)
+      normal! G$
+      " delete to a match and repeat
+      execute "normal d2\<Plug>(craftyjump-search-g#)"
+      call g:Expect(getline('.')).to_equal(':aaa: bbb aaa bbb :')
+      call g:DotRepeat(':aaa:')
+      call g:DotRepeat(':')
+      " next line
+      call g:DotRepeat(':aaabbb:aaa:bbbaaa:')
+      call g:DotRepeat(':aaabbb:aaa:')
+      call g:DotRepeat(':aaabbb:')
+      call g:DotRepeat(':')
+      execute "normal d3\<Plug>(craftyjump-search-g#)"
+      call g:Expect(getline('.')).to_equal(':aaa: bbb aaa bbb :')
+      call g:DotRepeat(':')
+    End
   End
   Context c{motion} - change
     " after exiting insert mode, the cursor position shifts one to the left
@@ -1132,6 +1243,128 @@ Context motions are used after operators
       " change a match and repeat
       execute "normal c\<Plug>(craftyjump-search-last)\<Esc>"
       call g:Expect(getline('.')).to_equal('aaa:')
+    End
+    It 'c*' (exclusive)
+      normal! gg0
+      " change a match and repeat
+      execute "normal c\<Plug>(craftyjump-search-*)\<Esc>"
+      call g:Expect(getline('.')).to_equal(':: bbb aaa bbb :aaa:')
+      call g:DotRepeat('::  aaa bbb :aaa:')
+      call g:DotRepeat('::   bbb :aaa:')
+      call g:DotRepeat('::    :aaa:')
+      call g:DotRepeat('::    ::')
+      call g:DotRepeat('::    ')
+      " No string under cursor
+      call g:DotRepeat('::    ')
+    End
+    It 'c2*' 'c3*' (exclusive)
+      normal! gg0
+      " change to a match and repeat
+      execute "normal c2\<Plug>(craftyjump-search-*)\<Esc>"
+      call g:Expect(getline('.')).to_equal('aaa: bbb aaa bbb :aaa:')
+      call g:DotRepeat('aaa bbb :aaa:')
+      call g:DotRepeat('aaa:')
+      " next line
+      call g:DotRepeat('aaa:bbbaaa:')
+      call g:DotRepeat('aaa: bbb aaa bbb :aaa:')
+      execute "normal c3\<Plug>(craftyjump-search-*)\<Esc>"
+      call g:Expect(getline('.')).to_equal('aaa:')
+    End
+    It 'c#' (exclusive)
+      normal! G$
+      " change a match and repeat
+      execute "normal c\<Plug>(craftyjump-search-#)\<Esc>"
+      call g:Expect(getline('.')).to_equal(':aaa: bbb aaa bbb :aaa')
+      call g:DotRepeat(':aaa: bbb aaa bbb :')
+      call g:DotRepeat(':aaa: bbb aaa bbb ')
+      " No string under cursor
+      call g:DotRepeat(':aaa: bbb aaa bbb ')
+    End
+    It 'c2#' 'c3#' (exclusive)
+      normal! G$
+      " change to a match and repeat
+      execute "normal c2\<Plug>(craftyjump-search-#)\<Esc>"
+      call g:Expect(getline('.')).to_equal(':aaa: bbb aaa bbb :')
+      call g:DotRepeat(':aaa :')
+      call g:DotRepeat(':a :')
+      call g:DotRepeat('a :')
+      call g:DotRepeat(' :')
+      " next line
+      call g:DotRepeat(':aaabbb:aaa:bbbaaa :')
+      call g:DotRepeat(':aaabbb:aaa:a :')
+      call g:DotRepeat(':aaabbb:aaaa :')
+      call g:DotRepeat(':aaabbb:aa :')
+      call g:DotRepeat(':aaabbbaa :')
+      call g:DotRepeat(':baa :')
+      call g:DotRepeat('baa :')
+      call g:DotRepeat('aa :')
+      call g:DotRepeat('a :')
+      call g:DotRepeat(' :')
+      execute "normal c3\<Plug>(craftyjump-search-#)\<Esc>"
+      call g:Expect(getline('.')).to_equal(':aaa: bbb aaa bbb  :')
+      call g:DotRepeat('  :')
+    End
+    It 'cg*' (exclusive)
+      normal! gg0
+      " change a match and repeat
+      execute "normal c\<Plug>(craftyjump-search-g*)\<Esc>"
+      call g:Expect(getline('.')).to_equal(':: bbb aaa bbb :aaa:')
+      call g:DotRepeat('::  aaa bbb :aaa:')
+      call g:DotRepeat('::   bbb :aaa:')
+      call g:DotRepeat('::    :aaa:')
+      call g:DotRepeat('::    ::')
+      call g:DotRepeat('::    ')
+      " No string under cursor
+      call g:DotRepeat('::    ')
+    End
+    It 'c2g*' 'c3g*' (exclusive)
+      normal! gg0
+      " change to a match and repeat
+      execute "normal c2\<Plug>(craftyjump-search-g*)\<Esc>"
+      call g:Expect(getline('.')).to_equal('aaa: bbb aaa bbb :aaa:')
+      call g:DotRepeat('aaa bbb :aaa:')
+      call g:DotRepeat('aaa:')
+      " next line
+      call g:DotRepeat('aaabbb:aaa:bbbaaa:')
+      call g:DotRepeat('aabbb:aaa:bbbaaa:')
+      call g:DotRepeat('abbb:aaa:bbbaaa:')
+      call g:DotRepeat('bbb:aaa:bbbaaa:')
+      call g:DotRepeat('bbbaaa:')
+      call g:DotRepeat('bbaaa:')
+      call g:DotRepeat('baaa:')
+      call g:DotRepeat('aaa:')
+      call g:DotRepeat('aaa: bbb aaa bbb :aaa:')
+      execute "normal c3\<Plug>(craftyjump-search-g*)\<Esc>"
+      call g:Expect(getline('.')).to_equal('aaa:')
+    End
+    It 'cg#' (exclusive)
+      normal! G$
+      " change a match and repeat
+      execute "normal c\<Plug>(craftyjump-search-g#)\<Esc>"
+      call g:Expect(getline('.')).to_equal(':aaa: bbb aaa bbb :aaa')
+      call g:DotRepeat(':aaa: bbb aaa bbb :')
+      call g:DotRepeat(':aaa: bbb aaa bbb ')
+      " No string under cursor
+      call g:DotRepeat(':aaa: bbb aaa bbb ')
+    End
+    It 'c2g#' 'c3g#' (exclusive)
+      normal! G$
+      " change to a match and repeat
+      execute "normal c2\<Plug>(craftyjump-search-g#)\<Esc>"
+      call g:Expect(getline('.')).to_equal(':aaa: bbb aaa bbb :')
+      call g:DotRepeat(':aaa :')
+      call g:DotRepeat(':a :')
+      " next line
+      call g:DotRepeat(':aaabbb:aaa:bbbaa:a :')
+      call g:DotRepeat(':aaabbb:aaa:a:a :')
+      call g:DotRepeat(':aaabbb:aa:a:a :')
+      call g:DotRepeat(':aaabbb:a:a:a :')
+      call g:DotRepeat(':aa:a:a:a :')
+      call g:DotRepeat(':a:a:a:a :')
+      call g:DotRepeat(':aaa: bbb aaa bbb :aa:a:a:a:a :')
+      execute "normal c3\<Plug>(craftyjump-search-g#)\<Esc>"
+      call g:Expect(getline('.')).to_equal(':aaa: bbb a:a:a:a:a :')
+      call g:DotRepeat(':a a:a:a:a:a :')
     End
   End
 End
