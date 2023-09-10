@@ -505,14 +505,20 @@ def StarSearch(motion: string): bool # {{{
   # @return {bool} - whether the pattern has found
   const cnt = v:count
   const isForward = IsForwardMotion(motion)
-  var pat: string
+  var isMoved: bool
   const cword = escape(GetWordUnderCursor(), '\/')
-  if motion ==# '*' || motion ==# '#'
-    pat = '\V' .. (cword =~# '^\k' ? '\<' : '') .. cword .. (cword =~# '\k$' ? '\>' : '')
-  elseif motion ==# 'g*' || motion ==# 'g#'
-    pat = '\V' .. cword
+  if cword ==# ''
+    # do not search if the string under the cursor is empty, like E348 (echo as a message)
+    echohl ErrorMsg | echomsg 'No string under cursor' | echohl None
+  else
+    var pat: string
+    if motion ==# '*' || motion ==# '#'
+      pat = '\V' .. (cword =~# '^\k' ? '\<' : '') .. cword .. (cword =~# '\k$' ? '\>' : '')
+    elseif motion ==# 'g*' || motion ==# 'g#'
+      pat = '\V' .. cword
+    endif
+    isMoved = SearchPattern(isForward, substitute(pat, '\n', '\\n', 'g'), cnt)
   endif
-  const isMoved = SearchPattern(isForward, substitute(pat, '\n', '\\n', 'g'), cnt)
   return isMoved
 enddef # }}}
 def SearchJump(motion: string, cnt: number): bool # {{{
