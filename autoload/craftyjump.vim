@@ -147,7 +147,7 @@ def SetJump(pos: list<number>) # {{{
   setcharpos('.', pos) | execute 'normal! m'''
   winrestview(view)
 enddef # }}}
-def DoSpecialMotion(motion: string, prevpos: list<number>) # {{{
+def DoSpecialMotion(motion: string, _, prevpos: list<number>) # {{{
   # @param {string} motion
   # @param {list<number>} prevpos - the cursor position before moving returned by getcursorcharpos()
   # treat 'cw' like 'ce' if the cursor has moved from a non-blank character (`WORD`)
@@ -162,13 +162,14 @@ def DoSpecialMotion(motion: string, prevpos: list<number>) # {{{
     endif
   endif
 enddef # }}}
-def DoMotion(motion: string, Move: func(number): bool, SpecialMove: func(list<number>) = null_function) # {{{
+def DoMotion(motion: string, Move: func(number): bool, SpecialMove: func(number, list<number>) = null_function) # {{{
   # @param {string} motion - treat the movement like specified motion
   # @param {func(number): bool} Move
   #   the function that moves the cursor
   #     @param {number} - v:count
-  # @param {func(list<number>)=} SpecialMove
+  # @param {func(number, list<number>)=} SpecialMove
   #   the function that adjusts the cursor position after moving in operator-pending mode
+  #     @param {number} - v:count
   #     @param {list<number>} - the cursor position before moving returned by getcursorcharpos()
   const cnt = v:count
   const mode = mode(true)
@@ -182,7 +183,7 @@ def DoMotion(motion: string, Move: func(number): bool, SpecialMove: func(list<nu
       const posBeforeMoving = getcursorcharpos()
       const isMoved = Move(cnt)
       if isMoved && SpecialMove != null_function
-        SpecialMove(posBeforeMoving)
+        SpecialMove(cnt, posBeforeMoving)
       endif
     finally
       timer_start(100, (_) => {
