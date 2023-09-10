@@ -1072,12 +1072,12 @@ Context motions are used after operators
     It 'cn' (exclusive)
       normal! gg0
       " change a match and repeat
-      execute "normal c\<Plug>(craftyjump-search-n)"
+      execute "normal c\<Plug>(craftyjump-search-n)\<Esc>"
       call g:Expect(getline('.')).to_equal('aaa: bbb aaa bbb :aaa:')
       call g:DotRepeat('aaa bbb :aaa:')
       call g:DotRepeat('aaa:')
       " change 2 match
-      execute "normal c2\<Plug>(craftyjump-search-n)"
+      execute "normal c2\<Plug>(craftyjump-search-n)\<Esc>"
       call g:Expect(getline('.')).to_equal('aaa:bbbaaa:')
       call g:DotRepeat('aaa: bbb aaa bbb :aaa:')
       call g:DotRepeat('aaa:')
@@ -1085,12 +1085,12 @@ Context motions are used after operators
     It 'cN' (exclusive)
       normal! G$
       " change a match and repeat
-      execute "normal c\<Plug>(craftyjump-search-N)"
+      execute "normal c\<Plug>(craftyjump-search-N)\<Esc>"
       call g:Expect(getline('.')).to_equal(':aaa: bbb aaa bbb ::')
       call g:DotRepeat(':aaa: bbb ::')
       call g:DotRepeat(': ::')
       " change 2 match
-      execute "normal c2\<Plug>(craftyjump-search-N)"
+      execute "normal c2\<Plug>(craftyjump-search-N)\<Esc>"
       call g:Expect(getline('.')).to_equal(':aaabbb:: ::')
       call g:DotRepeat(':aaa: bbb aaa bbb ::: ::')
       call g:DotRepeat(':::: ::')
@@ -1098,12 +1098,12 @@ Context motions are used after operators
     It 'c[n' (exclusive)
       normal! G$
       " change a match and repeat
-      execute "normal c\<Plug>(craftyjump-search-prev)"
+      execute "normal c\<Plug>(craftyjump-search-prev)\<Esc>"
       call g:Expect(getline('.')).to_equal(':aaa: bbb aaa bbb ::')
       call g:DotRepeat(':aaa: bbb ::')
       call g:DotRepeat(': ::')
       " change 2 match
-      execute "normal c2\<Plug>(craftyjump-search-prev)"
+      execute "normal c2\<Plug>(craftyjump-search-prev)\<Esc>"
       call g:Expect(getline('.')).to_equal(':aaabbb:: ::')
       call g:DotRepeat(':aaa: bbb aaa bbb ::: ::')
       call g:DotRepeat(':::: ::')
@@ -1111,12 +1111,12 @@ Context motions are used after operators
     It 'c]n' (exclusive)
       normal! gg0
       " change a match and repeat
-      execute "normal c\<Plug>(craftyjump-search-next)"
+      execute "normal c\<Plug>(craftyjump-search-next)\<Esc>"
       call g:Expect(getline('.')).to_equal('aaa: bbb aaa bbb :aaa:')
       call g:DotRepeat('aaa bbb :aaa:')
       call g:DotRepeat('aaa:')
       " change 2 match
-      execute "normal c2\<Plug>(craftyjump-search-next)"
+      execute "normal c2\<Plug>(craftyjump-search-next)\<Esc>"
       call g:Expect(getline('.')).to_equal('aaa:bbbaaa:')
       call g:DotRepeat('aaa: bbb aaa bbb :aaa:')
       call g:DotRepeat('aaa:')
@@ -1124,13 +1124,13 @@ Context motions are used after operators
     It 'c[N' (exclusive)
       normal! G$
       " change a match and repeat
-      execute "normal c\<Plug>(craftyjump-search-first)"
+      execute "normal c\<Plug>(craftyjump-search-first)\<Esc>"
       call g:Expect(getline('.')).to_equal('::')
     End
     It 'c]N' (exclusive)
       normal! gg0
       " change a match and repeat
-      execute "normal c\<Plug>(craftyjump-search-last)"
+      execute "normal c\<Plug>(craftyjump-search-last)\<Esc>"
       call g:Expect(getline('.')).to_equal('aaa:')
     End
   End
