@@ -148,21 +148,6 @@ def SetJump(pos: list<number>) # {{{
   setcharpos('.', pos) | execute 'normal! m'''
   winrestview(view)
 enddef # }}}
-def DoSpecialMotion(motion: string, _, prevpos: list<number>) # {{{
-  # @param {string} motion
-  # @param {list<number>} prevpos - the cursor position before moving returned by getcursorcharpos()
-  # treat 'cw' like 'ce' if the cursor has moved from a non-blank character (`WORD`)
-  if v:operator ==# 'c' && motion ==# 'w' && IsCharUnderCursor('\S', prevpos)
-    # if the character before the cursor ends with a whitespace, move backward to a non-blank character
-    const pos = getcursorcharpos()
-    if pos[2] > 1
-      # get characters that the cursor has passed through while moving, but only on the cursor line
-      const passedChars = getline(pos[1])[(prevpos[1] == pos[1] ? prevpos[2] - 1 : 0) : pos[2] - 2]
-      const offsetToLeft = strcharlen(matchstr(passedChars, '\s\+\%(\S\&[^[:keyword:]]\)*$'))
-      if offsetToLeft > 0 | DoNormal(offsetToLeft, 'h') | endif
-    endif
-  endif
-enddef # }}}
 def DoMotion(motion: string, Move: func(number): bool, SpecialMove: func(number, list<number>) = null_function) # {{{
   # @param {string} motion - treat the movement like specified motion
   # @param {func(number): bool} Move
@@ -281,13 +266,6 @@ def MoveToKwdChar(motion: string, cnt: number): bool # {{{
   endfor
   return isMoved
 enddef # }}}
-export def Word(motion: string)
-  # @param {'w' | 'b' | 'e' | 'ge'} motion
-  DoMotion(motion,
-    function(MoveToKwdChar, [motion]),
-    function(DoSpecialMotion, [motion]))
-enddef
-
 def MoveToCharInWord(motion: string, cnt: number): bool # {{{
   # @param {'w' | 'b' | 'e' | 'ge'} motion
   # @param {number} cnt - v:count
@@ -324,11 +302,32 @@ def MoveToCharInWord(motion: string, cnt: number): bool # {{{
   endfor
   return isMoved
 enddef # }}}
+def InterpretAsChangeWord(motion: string, _, prevpos: list<number>) # {{{
+  # @param {string} motion
+  # @param {list<number>} prevpos - the cursor position before moving returned by getcursorcharpos()
+  # treat 'cw' like 'ce' if the cursor has moved from a non-blank character (`WORD`)
+  if v:operator ==# 'c' && motion ==# 'w' && IsCharUnderCursor('\S', prevpos)
+    # if the character before the cursor ends with a whitespace, move backward to a non-blank character
+    const pos = getcursorcharpos()
+    if pos[2] > 1
+      # get characters that the cursor has passed through while moving, but only on the cursor line
+      const passedChars = getline(pos[1])[(prevpos[1] == pos[1] ? prevpos[2] - 1 : 0) : pos[2] - 2]
+      const offsetToLeft = strcharlen(matchstr(passedChars, '\s\+\%(\S\&[^[:keyword:]]\)*$'))
+      if offsetToLeft > 0 | DoNormal(offsetToLeft, 'h') | endif
+    endif
+  endif
+enddef # }}}
+export def Word(motion: string)
+  # @param {'w' | 'b' | 'e' | 'ge'} motion
+  DoMotion(motion,
+    function(MoveToKwdChar, [motion]),
+    function(InterpretAsChangeWord, [motion]))
+enddef
 export def WordInWord(motion: string)
   # @param {'w' | 'b' | 'e' | 'ge'} motion
   DoMotion(motion,
     function(MoveToCharInWord, [motion]),
-    function(DoSpecialMotion, [motion]))
+    function(InterpretAsChangeWord, [motion]))
 enddef
 
 def MoveToFirstChar(cnt: number): bool # {{{
