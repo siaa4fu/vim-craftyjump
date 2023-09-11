@@ -416,13 +416,13 @@ def MoveToLastChar(cnt = v:count): bool # {{{
 enddef # }}}
 export def LeftRight(motion: string)
   # @param {"\<home>" | "\<end>"} motion
-  var MoveToEdgeChar: func(number): bool
   if motion ==# "\<home>"
-    MoveToEdgeChar = MoveToFirstChar
+    DoMotion(motion,
+      MoveToFirstChar)
   elseif motion ==# "\<end>"
-    MoveToEdgeChar = MoveToLastChar
+    DoMotion(motion,
+      MoveToLastChar)
   endif
-  DoMotion(motion, MoveToEdgeChar)
 enddef
 
 def SmoothScroll(motion: string, lines: number, _) # {{{
@@ -530,10 +530,10 @@ def SearchJump(motion: string, cnt = v:count): bool # {{{
   # @param {'[n' | ']n' | '[N' | ']N'} motion
   # @param {number=} cnt - v:count
   # @return {bool} - whether the cursor has moved to a match
+  const isForward = IsForwardMotion(motion)
   # if an error occurs, probably an invalid regular expression is used
   const searchresult = searchcount({maxcount: 0})
   var steps: number
-  const isForward = IsForwardMotion(motion)
   var searchflags: string
   if motion ==# '[n' || motion ==# ']n'
     # jump to the [count] previous or next match
