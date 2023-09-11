@@ -482,11 +482,11 @@ def RepeatSearch(motion: string, cnt: number): bool # {{{
   # @param {number} cnt - v:count
   # @return {bool} - whether the cursor has moved to a match
   const isForward = IsForwardMotion(motion)
-  var isMoved: bool
   const startpos = getcursorcharpos()
+  # skip a closed fold
+  GoToFoldEdge(isForward, startpos[1])
+  var isMoved: bool
   for i in range(cnt ?? 1)
-    # skip a closed fold
-    GoToFoldEdge(isForward, startpos[1])
     isMoved = DoNormal(motion)
     if ! isMoved | break | endif
   endfor
