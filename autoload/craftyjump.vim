@@ -340,10 +340,19 @@ def MoveToLastChar(cnt = v:count): bool # {{{
   return isMoved
 enddef # }}}
 # scrolling
-def SmoothScroll(motion: string, lines: number, _) # {{{
+var scrolltimerid: number
+def SmoothScroll(motion: string, cnt = v:count) # {{{
   # @param {"\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>"} motion
-  # @param {number} lines - the number of lines to scroll
+  # @param {number=} cnt - v:count
   const isForward = IsForwardMotion(motion)
+  var lines: number
+  if motion ==# "\<C-d>" || motion ==# "\<C-u>"
+    # scroll [count] lines or half a screen as default
+    lines = cnt ?? &scroll
+  elseif motion ==# "\<C-f>" || motion ==# "\<C-b>"
+    # scroll [count] screens
+    lines = (cnt ?? 1) * winheight(0)
+  endif
   var n: number
   var keys: list<string>
   if isForward
@@ -354,26 +363,30 @@ def SmoothScroll(motion: string, lines: number, _) # {{{
     keys = ["\<C-y>", 'gk']
   endif
   const step = get(g:, 'craftyjump#scroll_step', 3)
-  while n > 0
-    n -= 1
-    # the cursor may move when scrolling window in the following cases
-    #   the cursor is at the first line visible in window when scrolling downward
-    #   the cursor is at the last line visible in window when scrolling upward
-    #   &scrolloff is greater than 0
-    const pos = getcursorcharpos()
-    DoNormal(keys[0])
-    if getcursorcharpos() == pos
-      # move the cursor if it still stays where it was
-      DoNormal(keys[1])
+  # use a timer to activate only last key input on long press
+  timer_stop(scrolltimerid) # no error even if a timer ID does not exist
+  scrolltimerid = timer_start(10, (_) => {
+    while n > 0
+      # the cursor may move when scrolling window in the following cases
+      #   the cursor is at the first line visible in window when scrolling downward
+      #   the cursor is at the last line visible in window when scrolling upward
+      #   &scrolloff is greater than 0
+      const prevpos = getcursorcharpos()
+      DoNormal(keys[0])
+      if prevpos == getcursorcharpos()
+        # move the cursor if it still stays where it was
+        DoNormal(keys[1])
+      endif
+      if n % step == 0
+        redraw
+      endif
+      n -= 1
+    endwhile
+    if &startofline
+      # move the cursor to the first non-blank character of the line
+      DoNormal('^')
     endif
-    if n % step == 0
-      redraw
-    endif
-  endwhile
-  if &startofline
-    # move the cursor to the first non-blank character of the line
-    DoNormal('^')
-  endif
+  })
 enddef # }}}
 # pattern-searches
 def RepeatSearch(motion: string, cnt = v:count): bool # {{{
@@ -559,21 +572,14 @@ export def LeftRight(motion: string) # {{{
       MoveToLastChar)
   endif
 enddef # }}}
-var scrolltimerid: number
 export def Scroll(motion: string) # {{{
   # @param {"\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>"} motion
-  const cnt = v:count
-  var lines: number
-  if motion ==# "\<C-d>" || motion ==# "\<C-u>"
-    # scroll [count] lines or half a screen as default
-    lines = cnt ?? &scroll
-  elseif motion ==# "\<C-f>" || motion ==# "\<C-b>"
-    # scroll [count] screens
-    lines = (cnt ?? 1) * winheight(0)
-  endif
-  # use a timer to activate only last key input on long press
-  timer_stop(scrolltimerid) # no error even if a timer ID does not exist
-  scrolltimerid = timer_start(10, function(SmoothScroll, [motion, lines]))
+  # scrolling commands move the cursor, but they are not motions
+  try
+    SmoothScroll(motion)
+  catch
+    echohl ErrorMsg | echomsg substitute(v:exception, '^Vim\%((\a\+)\)\=:', '', '') | echohl None
+  endtry
 enddef # }}}
 export def Search(motion: string) # {{{
   # @param {'n' | 'N' | '*' | '#' | 'g*' | 'g#' | '[n' | ']n' | '[N' | ']N'} motion
