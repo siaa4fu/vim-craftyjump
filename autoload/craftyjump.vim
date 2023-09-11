@@ -1,6 +1,13 @@
 vim9script
 scriptencoding utf-8
 
+def EchomsgException() # {{{
+  # note that this function must be called in :catch
+  echohl ErrorMsg
+  echomsg v:throwpoint
+  echomsg substitute(v:exception, '^Vim\%((\a\+)\)\=:', '', '')
+  echohl None
+enddef # }}}
 def IsCharUnderCursor(regexp: string, pos = getcursorcharpos(), line = getline(pos[1])): bool # {{{
   # @param {string} regexp - regexp to check if the character under the cursor matches
   # @param {list<number>=} pos - the cursor position
@@ -520,7 +527,7 @@ def DoMap(doAsExclusive: bool, Move: func(number): bool, SpecialMove: func(numbe
         SpecialMove(cnt, startpos)
       endif
     catch
-      echohl ErrorMsg | echomsg substitute(v:exception, '^Vim\%((\a\+)\)\=:', '', '') | echohl None
+      EchomsgException()
       # cancel the operator and move the cursor back
       execute "normal! \<Esc>" # stop visual mode
       setcharpos('.', startpos)
@@ -534,7 +541,7 @@ def DoMap(doAsExclusive: bool, Move: func(number): bool, SpecialMove: func(numbe
       # move the cursor in any mode except operator-pending mode
       isMoved = Move(cnt)
     catch
-      echohl ErrorMsg | echomsg substitute(v:exception, '^Vim\%((\a\+)\)\=:', '', '') | echohl None
+      EchomsgException()
     endtry
   endif
 enddef # }}}
@@ -578,7 +585,7 @@ export def Scroll(motion: string) # {{{
   try
     SmoothScroll(motion)
   catch
-    echohl ErrorMsg | echomsg substitute(v:exception, '^Vim\%((\a\+)\)\=:', '', '') | echohl None
+    EchomsgException()
   endtry
 enddef # }}}
 export def Search(motion: string) # {{{
