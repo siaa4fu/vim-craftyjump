@@ -149,7 +149,7 @@ def DoMotion(motion: string, Move: func(number): bool, SpecialMove: func(number,
   # @param {func(number, list<number>)=} SpecialMove
   #   the function that adjusts the cursor position after moving in operator-pending mode
   #     @param {number} - v:count
-  #     @param {list<number>} - the cursor position before moving returned by getcursorcharpos()
+  #     @param {list<number>} - the starting position before the cursor moves, returned by getcursorcharpos()
   const cnt = v:count
   var isMoved: bool
   const mode = mode(true)
@@ -159,17 +159,17 @@ def DoMotion(motion: string, Move: func(number): bool, SpecialMove: func(number,
     # temporarily override &selection, then restore it after the operator is done
     const sel = &selection
     &selection = IsExclusiveMotion(motion) ? 'exclusive' : 'inclusive'
-    const posBeforeMoving = getcursorcharpos()
+    const startpos = getcursorcharpos()
     try
       isMoved = Move(cnt)
       if isMoved && SpecialMove != null_function
-        SpecialMove(cnt, posBeforeMoving)
+        SpecialMove(cnt, startpos)
       endif
     catch
       echohl ErrorMsg | echomsg substitute(v:exception, '^Vim\%((\a\+)\)\=:', '', '') | echohl None
-      # cancel the operator
+      # cancel the operator and move the cursor back
       execute "normal! \<Esc>" # stop visual mode
-      setcharpos('.', posBeforeMoving)
+      setcharpos('.', startpos)
     finally
       timer_start(100, (_) => {
         &selection = sel
@@ -305,16 +305,16 @@ def MoveToCharInWord(motion: string, cnt: number): bool # {{{
   endfor
   return isMoved
 enddef # }}}
-def InterpretAsChangeWord(motion: string, _, prevpos: list<number>) # {{{
+def InterpretAsChangeWord(motion: string, _, startpos: list<number>) # {{{
   # @param {string} motion
-  # @param {list<number>} prevpos - the cursor position before moving returned by getcursorcharpos()
+  # @param {list<number>} startpos - the starting position before the cursor moves
   # treat 'cw' like 'ce' if the cursor has moved from a non-blank character (`WORD`)
-  if v:operator ==# 'c' && motion ==# 'w' && IsCharUnderCursor('\S', prevpos)
+  if v:operator ==# 'c' && motion ==# 'w' && IsCharUnderCursor('\S', startpos)
     # if the character before the cursor ends with a whitespace, move backward to a non-blank character
     const pos = getcursorcharpos()
     if pos[2] > 1
       # get characters that the cursor has passed through while moving, but only on the cursor line
-      const passedChars = getline(pos[1])[(prevpos[1] == pos[1] ? prevpos[2] - 1 : 0) : pos[2] - 2]
+      const passedChars = getline(pos[1])[(startpos[1] == pos[1] ? startpos[2] - 1 : 0) : pos[2] - 2]
       const offsetToLeft = strcharlen(matchstr(passedChars, '\s\+\%(\S\&[^[:keyword:]]\)*$'))
       if offsetToLeft > 0 | DoNormal(offsetToLeft, 'h') | endif
     endif
@@ -483,24 +483,24 @@ def RepeatSearch(motion: string, cnt: number): bool # {{{
   # @return {bool} - whether the cursor has moved to a match
   const isForward = IsForwardMotion(motion)
   var isMoved: bool
-  const prevpos = getcursorcharpos()
+  const startpos = getcursorcharpos()
   for i in range(cnt ?? 1)
     # skip a closed fold
-    GoToFoldEdge(isForward, prevpos[1])
+    GoToFoldEdge(isForward, startpos[1])
     isMoved = DoNormal(motion)
     if ! isMoved | break | endif
   endfor
   if isMoved
     const pos = getcursorcharpos()
-    SetJump(prevpos)
-    if prevpos[1] != pos[1] && pos[1] == (isForward ? line('w$') : line('w0'))
+    SetJump(startpos)
+    if startpos[1] != pos[1] && pos[1] == (isForward ? line('w$') : line('w0'))
       # when the cursor moved to another line (which means at least 2 matches were found)
       # and that line is the first or last line visible in window
       isMoved = DoNormal('zz')
     endif
   else
     # move the cursor back if no pattern is found
-    setcharpos('.', prevpos)
+    setcharpos('.', startpos)
   endif
   return isMoved
 enddef # }}}
@@ -596,9 +596,9 @@ export def SearchPattern(isForward: bool, pat: string, cnt = v:count): bool # {{
     isMoved = searchcount().total > 0
   else
     # go to the [count - 1]th match
-    const prevpos = getcursorcharpos()
+    const startpos = getcursorcharpos()
     isMoved = RepeatSearch(isForward == IsForwardMotion('n') ? 'n' : 'N', cnt - 1)
-    if isMoved | SetJump(prevpos) | endif
+    if isMoved | SetJump(startpos) | endif
   endif
   # avoid `function-search-undo` (do not use the 'x' flag)
   feedkeys("\<ScriptCmd>v:searchforward = " .. (isForward ? 1 : 0) .. "\<CR>")
