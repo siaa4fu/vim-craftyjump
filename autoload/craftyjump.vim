@@ -1,9 +1,9 @@
 vim9script
 scriptencoding utf-8
 
-def IsCharUnderCursor(regexp: string, pos: list<number>, line = getline(pos[1])): bool # {{{
+def IsCharUnderCursor(regexp: string, pos = getcursorcharpos(), line = getline(pos[1])): bool # {{{
   # @param {string} regexp - regexp to check if the character under the cursor matches
-  # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
+  # @param {list<number>=} pos - the cursor position
   # @param {string=} line - the line of the cursor position
   # @return {bool} - whether the character under the cursor is a keyword character
   return line[pos[2] - 1] =~# regexp
@@ -28,8 +28,8 @@ def GetWordUnderCursor(forceCword = false): string # {{{
   endif
   return cword
 enddef # }}}
-def IsExclusiveSelEnd(pos: list<number>): bool # {{{
-  # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
+def IsExclusiveSelEnd(pos = getcursorcharpos()): bool # {{{
+  # @param {list<number>=} pos - the cursor position
   # @return {bool} - whether the cursor is the end of the exclusive selection
   if &selection ==# 'exclusive' && mode() =~# "[vV\<C-v>]"
     # return true if the cursor is the end of the selection, not the start
@@ -87,9 +87,9 @@ def IsExclusiveMotion(motion: string): bool # {{{
   endif
   return isExMotion
 enddef # }}}
-def GoToFoldEdge(isForward: bool, lnum: number): bool # {{{
+def GoToFoldEdge(isForward: bool, lnum = line('.')): bool # {{{
   # @param {bool} isForward - position the cursor at the end of the closed fold if true, the start if false
-  # @param {number} lnum - the number of the cursor line
+  # @param {number=} lnum - the line number of the cursor position
   # @return {bool} - whether the cursor has been positioned at the edge of the closed fold
   var isMoved: bool
   if isForward
@@ -185,24 +185,24 @@ def DoMotion(motion: string, Move: func(number): bool, SpecialMove: func(number,
   endif
 enddef # }}}
 
-def IsAfterLineEnd(pos: list<number>, line = getline(pos[1]), isExSelEnd = IsExclusiveSelEnd(pos)): bool # {{{
-  # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
+def IsAfterLineEnd(pos = getcursorcharpos(), line = getline(pos[1]), isExSelEnd = IsExclusiveSelEnd(pos)): bool # {{{
+  # @param {list<number>=} pos - the cursor position
   # @param {string=} line - the line of the cursor position
   # @param {bool=} isExSelEnd - whether the cursor is the end of the exclusive selection
   # @return {bool} - whether the cursor is on or after the end of the line
   # return true if the characters to the right of the cursor are whitespaces only
   return line[pos[2] - (isExSelEnd ? 1 : 0) :] =~# '^\s*$'
 enddef # }}}
-def IsBeforeLineStart(pos: list<number>, line = getline(pos[1]), ..._): bool # {{{
-  # @param {list<number>} pos - the cursor position returned by getcursorcharpos()
+def IsBeforeLineStart(pos = getcursorcharpos(), line = getline(pos[1]), ..._): bool # {{{
+  # @param {list<number>=} pos - the cursor position
   # @param {string=} line - the line of the cursor position
   # @return {bool} - whether the cursor is on or before the start of the line
   # return true if the characters to the left of the cursor are whitespaces only
   return (pos[2] == 1 ? '' : line[0 : pos[2] - 2]) =~# '^\s*$'
 enddef # }}}
-def MoveToKwdChar(motion: string, cnt: number): bool # {{{
+def MoveToKwdChar(motion: string, cnt = v:count): bool # {{{
   # @param {'w' | 'b' | 'e' | 'ge'} motion
-  # @param {number} cnt - v:count
+  # @param {number=} cnt - v:count
   # @return {bool} - whether the cursor has moved to a keyword character
   const isForward = IsForwardMotion(motion)
   const bufferEdge = isForward ? [line('$'), charcol('$')] : [1, 1]
@@ -269,9 +269,9 @@ def MoveToKwdChar(motion: string, cnt: number): bool # {{{
   endfor
   return isMoved
 enddef # }}}
-def MoveToCharInWord(motion: string, cnt: number): bool # {{{
+def MoveToCharInWord(motion: string, cnt = v:count): bool # {{{
   # @param {'w' | 'b' | 'e' | 'ge'} motion
-  # @param {number} cnt - v:count
+  # @param {number=} cnt - v:count
   # @return {bool} - whether the cursor has moved to a word in a word (wiw)
   const isForward = IsForwardMotion(motion)
   var pat: string
@@ -333,8 +333,8 @@ export def WordInWord(motion: string)
     function(InterpretAsChangeWord, [motion]))
 enddef
 
-def MoveToFirstChar(cnt: number): bool # {{{
-  # @param {number} cnt - v:count
+def MoveToFirstChar(cnt = v:count): bool # {{{
+  # @param {number=} cnt - v:count
   # @return {bool} - whether the cursor has moved to first characters
   var isMoved: bool
   if cnt > 1
@@ -374,8 +374,8 @@ def MoveToFirstChar(cnt: number): bool # {{{
   endif
   return isMoved
 enddef # }}}
-def MoveToLastChar(cnt: number): bool # {{{
-  # @param {number} cnt - v:count
+def MoveToLastChar(cnt = v:count): bool # {{{
+  # @param {number=} cnt - v:count
   # @return {bool} - whether the cursor has moved to last characters
   var isMoved: bool
   if cnt > 1
@@ -477,9 +477,9 @@ export def Scroll(motion: string)
   scrolltimerid = timer_start(10, function(SmoothScroll, [motion, lines]))
 enddef
 
-def RepeatSearch(motion: string, cnt: number): bool # {{{
+def RepeatSearch(motion: string, cnt = v:count): bool # {{{
   # @param {'n' | 'N'} motion
-  # @param {number} cnt - v:count
+  # @param {number=} cnt - v:count
   # @return {bool} - whether the cursor has moved to a match
   const isForward = IsForwardMotion(motion)
   const startpos = getcursorcharpos()
@@ -504,10 +504,10 @@ def RepeatSearch(motion: string, cnt: number): bool # {{{
   endif
   return isMoved
 enddef # }}}
-def StarSearch(motion: string, forceCword: bool, cnt: number): bool # {{{
+def StarSearch(motion: string, forceCword = false, cnt = v:count): bool # {{{
   # @param {'*' | '#' | 'g*' | 'g#'} motion
-  # @param {bool} forceCword - always search for <cword> even if the selection exists in visual mode
-  # @param {number} cnt - v:count
+  # @param {bool=} forceCword - always search for <cword> even if the selection exists in visual mode
+  # @param {number=} cnt - v:count
   # @return {bool} - whether the pattern has found
   const isForward = IsForwardMotion(motion)
   var isMoved: bool
@@ -526,9 +526,9 @@ def StarSearch(motion: string, forceCword: bool, cnt: number): bool # {{{
   endif
   return isMoved
 enddef # }}}
-def SearchJump(motion: string, cnt: number): bool # {{{
+def SearchJump(motion: string, cnt = v:count): bool # {{{
   # @param {'[n' | ']n' | '[N' | ']N'} motion
-  # @param {number} cnt - v:count
+  # @param {number=} cnt - v:count
   # @return {bool} - whether the cursor has moved to a match
   # if an error occurs, probably an invalid regular expression is used
   const searchresult = searchcount({maxcount: 0})
