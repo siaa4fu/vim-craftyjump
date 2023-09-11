@@ -147,13 +147,13 @@ def MoveToKwdChar(motion: string, cnt = v:count): bool # {{{
   var isMoved: bool
   for i in range(cnt ?? 1)
     final prev = {}
-    prev.pos = getcursorcharpos() # [0, lnum, charcol, off, curswant]
+    prev.pos = getcursorcharpos()
     prev.line = getline(prev.pos[1])
     prev.isExSelEnd = IsExclusiveSelEnd(prev.pos)
     while true
       if GoToFoldEdge(isForward, prev.pos[1])
         # go to the edge of a closed fold if the cursor is in the fold before moving
-        prev.pos = getcursorcharpos() # [0, lnum, charcol, off, curswant]
+        prev.pos = getcursorcharpos()
         prev.line = getline(prev.pos[1])
         prev.isExSelEnd = IsExclusiveSelEnd(prev.pos)
       elseif motion ==# 'e' && prev.isExSelEnd
@@ -360,7 +360,7 @@ def SmoothScroll(motion: string, lines: number, _) # {{{
     #   the cursor is at the first line visible in window when scrolling downward
     #   the cursor is at the last line visible in window when scrolling upward
     #   &scrolloff is greater than 0
-    const pos = getcursorcharpos() # [0, lnum, charcol, off, curswant]
+    const pos = getcursorcharpos()
     DoNormal(keys[0])
     if getcursorcharpos() == pos
       # move the cursor if it still stays where it was
