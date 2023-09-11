@@ -66,27 +66,6 @@ def IsForwardMotion(motion: string): bool # {{{
   endif
   return isForward
 enddef # }}}
-def IsExclusiveMotion(motion: string): bool # {{{
-  # @param {'w' | 'b' | 'e' | 'ge' | "\<home>" | "\<end>" | 'n' | 'N' | '*' | '#' | 'g*' | 'g#' | '[n' | ']n' | '[N' | ']N'} motion
-  # @return {bool} - return true if the motion is exclusive, or false if inclusive
-  var isExMotion: bool
-  if motion ==# 'w' || motion ==# 'b'
-    isExMotion = true
-  elseif motion ==# 'e' || motion ==# 'ge'
-    isExMotion = false
-  elseif motion ==# "\<home>"
-    isExMotion = true
-  elseif motion ==# "\<end>"
-    isExMotion = false
-  elseif motion ==# 'n' || motion ==# 'N'
-      || motion ==# '*' || motion ==# '#' || motion ==# 'g*' || motion ==# 'g#'
-      || motion ==# '[n' || motion ==# ']n' || motion ==# '[N' || motion ==# ']N'
-    isExMotion = true
-  else
-    echoerr 'Unsupported motion:' motion
-  endif
-  return isExMotion
-enddef # }}}
 def GoToFoldEdge(isForward: bool, lnum = line('.')): bool # {{{
   # @param {bool} isForward - position the cursor at the end of the closed fold if true, the start if false
   # @param {number=} lnum - the line number of the cursor position
@@ -141,8 +120,8 @@ def SetJump(pos: list<number>) # {{{
   setcharpos('.', pos) | execute 'normal! m'''
   winrestview(view)
 enddef # }}}
-def DoMotion(motion: string, Move: func(number): bool, SpecialMove: func(number, list<number>) = null_function) # {{{
-  # @param {string} motion - treat the movement like specified motion
+def DoMap(doAsExclusive: bool, Move: func(number): bool, SpecialMove: func(number, list<number>) = null_function) # {{{
+  # @param {string} doAsExclusive - treat the movement as exclusive if true, inclusive if false
   # @param {func(number): bool} Move
   #   the function that moves the cursor
   #     @param {number} - v:count
@@ -158,7 +137,7 @@ def DoMotion(motion: string, Move: func(number): bool, SpecialMove: func(number,
     execute 'normal!' (mode[2] ?? 'v')
     # temporarily override &selection, then restore it after the operator is done
     const sel = &selection
-    &selection = IsExclusiveMotion(motion) ? 'exclusive' : 'inclusive'
+    &selection = doAsExclusive ? 'exclusive' : 'inclusive'
     const startpos = getcursorcharpos()
     try
       isMoved = Move(cnt)
@@ -322,13 +301,25 @@ def InterpretAsChangeWord(motion: string, _, startpos: list<number>) # {{{
 enddef # }}}
 export def Word(motion: string)
   # @param {'w' | 'b' | 'e' | 'ge'} motion
-  DoMotion(motion,
+  var doAsExclusive: bool
+  if motion ==# 'w' || motion ==# 'b'
+    doAsExclusive = true
+  elseif motion ==# 'e' || motion ==# 'ge'
+    doAsExclusive = false
+  endif
+  DoMap(doAsExclusive,
     function(MoveToKwdChar, [motion]),
     function(InterpretAsChangeWord, [motion]))
 enddef
 export def WordInWord(motion: string)
   # @param {'w' | 'b' | 'e' | 'ge'} motion
-  DoMotion(motion,
+  var doAsExclusive: bool
+  if motion ==# 'w' || motion ==# 'b'
+    doAsExclusive = true
+  elseif motion ==# 'e' || motion ==# 'ge'
+    doAsExclusive = false
+  endif
+  DoMap(doAsExclusive,
     function(MoveToCharInWord, [motion]),
     function(InterpretAsChangeWord, [motion]))
 enddef
@@ -417,10 +408,10 @@ enddef # }}}
 export def LeftRight(motion: string)
   # @param {"\<home>" | "\<end>"} motion
   if motion ==# "\<home>"
-    DoMotion(motion,
+    DoMap(true,
       MoveToFirstChar)
   elseif motion ==# "\<end>"
-    DoMotion(motion,
+    DoMap(false,
       MoveToLastChar)
   endif
 enddef
@@ -562,10 +553,10 @@ enddef # }}}
 export def Search(motion: string)
   # @param {'n' | 'N' | '*' | '#' | 'g*' | 'g#' | '[n' | ']n' | '[N' | ']N'} motion
   if motion ==# 'n' || motion ==# 'N'
-    DoMotion(motion,
+    DoMap(true,
       function(RepeatSearch, [motion]))
   elseif motion ==# '*' || motion ==# '#' || motion ==# 'g*' || motion ==# 'g#'
-    DoMotion(motion,
+    DoMap(true,
       function(StarSearch, [motion, mode(true) =~# '^no']),
       (cnt, _) => {
         if cnt < 2
@@ -575,7 +566,7 @@ export def Search(motion: string)
         endif
       })
   elseif motion ==# '[n' || motion ==# ']n' || motion ==# '[N' || motion ==# ']N'
-    DoMotion(motion,
+    DoMap(true,
       function(SearchJump, [motion]))
   endif
   # avoid `function-search-undo` (do not use the 'x' flag)
