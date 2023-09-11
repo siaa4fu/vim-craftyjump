@@ -120,50 +120,8 @@ def SetJump(pos: list<number>) # {{{
   setcharpos('.', pos) | execute 'normal! m'''
   winrestview(view)
 enddef # }}}
-def DoMap(doAsExclusive: bool, Move: func(number): bool, SpecialMove: func(number, list<number>) = null_function) # {{{
-  # @param {string} doAsExclusive - treat the movement as exclusive if true, inclusive if false
-  # @param {func(number): bool} Move
-  #   the function that moves the cursor
-  #     @param {number} - v:count
-  # @param {func(number, list<number>)=} SpecialMove
-  #   the function that adjusts the cursor position after moving in operator-pending mode
-  #     @param {number} - v:count
-  #     @param {list<number>} - the starting position before the cursor moves, returned by getcursorcharpos()
-  const cnt = v:count
-  var isMoved: bool
-  const mode = mode(true)
-  if mode =~# '^no'
-    # set the operator to be linewise, characterwise or blockwise (`forced-motion`)
-    execute 'normal!' (mode[2] ?? 'v')
-    # temporarily override &selection, then restore it after the operator is done
-    const sel = &selection
-    &selection = doAsExclusive ? 'exclusive' : 'inclusive'
-    const startpos = getcursorcharpos()
-    try
-      isMoved = Move(cnt)
-      if isMoved && SpecialMove != null_function
-        SpecialMove(cnt, startpos)
-      endif
-    catch
-      echohl ErrorMsg | echomsg substitute(v:exception, '^Vim\%((\a\+)\)\=:', '', '') | echohl None
-      # cancel the operator and move the cursor back
-      execute "normal! \<Esc>" # stop visual mode
-      setcharpos('.', startpos)
-    finally
-      timer_start(100, (_) => {
-        &selection = sel
-      })
-    endtry
-  else
-    try
-      # move the cursor in any mode except operator-pending mode
-      isMoved = Move(cnt)
-    catch
-      echohl ErrorMsg | echomsg substitute(v:exception, '^Vim\%((\a\+)\)\=:', '', '') | echohl None
-    endtry
-  endif
-enddef # }}}
 
+# word-motions and wiw-motions
 def IsAfterLineEnd(pos = getcursorcharpos(), line = getline(pos[1]), isExSelEnd = IsExclusiveSelEnd(pos)): bool # {{{
   # @param {list<number>=} pos - the cursor position
   # @param {string=} line - the line of the cursor position
@@ -299,31 +257,7 @@ def InterpretAsChangeWord(motion: string, _, startpos: list<number>) # {{{
     endif
   endif
 enddef # }}}
-export def Word(motion: string)
-  # @param {'w' | 'b' | 'e' | 'ge'} motion
-  var doAsExclusive: bool
-  if motion ==# 'w' || motion ==# 'b'
-    doAsExclusive = true
-  elseif motion ==# 'e' || motion ==# 'ge'
-    doAsExclusive = false
-  endif
-  DoMap(doAsExclusive,
-    function(MoveToKwdChar, [motion]),
-    function(InterpretAsChangeWord, [motion]))
-enddef
-export def WordInWord(motion: string)
-  # @param {'w' | 'b' | 'e' | 'ge'} motion
-  var doAsExclusive: bool
-  if motion ==# 'w' || motion ==# 'b'
-    doAsExclusive = true
-  elseif motion ==# 'e' || motion ==# 'ge'
-    doAsExclusive = false
-  endif
-  DoMap(doAsExclusive,
-    function(MoveToCharInWord, [motion]),
-    function(InterpretAsChangeWord, [motion]))
-enddef
-
+# left-right-motions
 def MoveToFirstChar(cnt = v:count): bool # {{{
   # @param {number=} cnt - v:count
   # @return {bool} - whether the cursor has moved to first characters
@@ -405,17 +339,7 @@ def MoveToLastChar(cnt = v:count): bool # {{{
   endif
   return isMoved
 enddef # }}}
-export def LeftRight(motion: string)
-  # @param {"\<home>" | "\<end>"} motion
-  if motion ==# "\<home>"
-    DoMap(true,
-      MoveToFirstChar)
-  elseif motion ==# "\<end>"
-    DoMap(false,
-      MoveToLastChar)
-  endif
-enddef
-
+# scrolling
 def SmoothScroll(motion: string, lines: number, _) # {{{
   # @param {"\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>"} motion
   # @param {number} lines - the number of lines to scroll
@@ -451,23 +375,7 @@ def SmoothScroll(motion: string, lines: number, _) # {{{
     DoNormal('^')
   endif
 enddef # }}}
-var scrolltimerid: number
-export def Scroll(motion: string)
-  # @param {"\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>"} motion
-  const cnt = v:count
-  var lines: number
-  if motion ==# "\<C-d>" || motion ==# "\<C-u>"
-    # scroll [count] lines or half a screen as default
-    lines = cnt ?? &scroll
-  elseif motion ==# "\<C-f>" || motion ==# "\<C-b>"
-    # scroll [count] screens
-    lines = (cnt ?? 1) * winheight(0)
-  endif
-  # use a timer to activate only last key input on long press
-  timer_stop(scrolltimerid) # no error even if a timer ID does not exist
-  scrolltimerid = timer_start(10, function(SmoothScroll, [motion, lines]))
-enddef
-
+# pattern-searches
 def RepeatSearch(motion: string, cnt = v:count): bool # {{{
   # @param {'n' | 'N'} motion
   # @param {number=} cnt - v:count
@@ -550,29 +458,6 @@ def SearchJump(motion: string, cnt = v:count): bool # {{{
   endfor
   return isMoved
 enddef # }}}
-export def Search(motion: string)
-  # @param {'n' | 'N' | '*' | '#' | 'g*' | 'g#' | '[n' | ']n' | '[N' | ']N'} motion
-  if motion ==# 'n' || motion ==# 'N'
-    DoMap(true,
-      function(RepeatSearch, [motion]))
-  elseif motion ==# '*' || motion ==# '#' || motion ==# 'g*' || motion ==# 'g#'
-    DoMap(true,
-      function(StarSearch, [motion, mode(true) =~# '^no']),
-      (cnt, _) => {
-        if cnt < 2
-          # when searching without moving the cursor, select the match and operate on it
-          execute "normal! \<Esc>" # temporarily stop visual mode
-          execute 'normal! gn' .. (visualmode() !=# 'v' ? visualmode() : '')
-        endif
-      })
-  elseif motion ==# '[n' || motion ==# ']n' || motion ==# '[N' || motion ==# ']N'
-    DoMap(true,
-      function(SearchJump, [motion]))
-  endif
-  # avoid `function-search-undo` (do not use the 'x' flag)
-  feedkeys("\<ScriptCmd>v:hlsearch = 1\<CR>", 'n')
-enddef
-
 export def SearchPattern(isForward: bool, pat: string, cnt = v:count): bool # {{{
   # @param {bool} isForward - search forward if true, backward if false
   # @param {string} pat - the regexp pattern
@@ -594,4 +479,121 @@ export def SearchPattern(isForward: bool, pat: string, cnt = v:count): bool # {{
   # avoid `function-search-undo` (do not use the 'x' flag)
   feedkeys("\<ScriptCmd>v:searchforward = " .. (isForward ? 1 : 0) .. "\<CR>")
   return isMoved
+enddef # }}}
+
+# define mappings
+def DoMap(doAsExclusive: bool, Move: func(number): bool, SpecialMove: func(number, list<number>) = null_function) # {{{
+  # @param {string} doAsExclusive - treat the movement as exclusive if true, inclusive if false
+  # @param {func(number): bool} Move
+  #   the function that moves the cursor
+  #     @param {number} - v:count
+  # @param {func(number, list<number>)=} SpecialMove
+  #   the function that adjusts the cursor position after moving in operator-pending mode
+  #     @param {number} - v:count
+  #     @param {list<number>} - the starting position before the cursor moves, returned by getcursorcharpos()
+  const cnt = v:count
+  var isMoved: bool
+  const mode = mode(true)
+  if mode =~# '^no'
+    # set the operator to be linewise, characterwise or blockwise (`forced-motion`)
+    execute 'normal!' (mode[2] ?? 'v')
+    # temporarily override &selection, then restore it after the operator is done
+    const sel = &selection
+    &selection = doAsExclusive ? 'exclusive' : 'inclusive'
+    const startpos = getcursorcharpos()
+    try
+      isMoved = Move(cnt)
+      if isMoved && SpecialMove != null_function
+        SpecialMove(cnt, startpos)
+      endif
+    catch
+      echohl ErrorMsg | echomsg substitute(v:exception, '^Vim\%((\a\+)\)\=:', '', '') | echohl None
+      # cancel the operator and move the cursor back
+      execute "normal! \<Esc>" # stop visual mode
+      setcharpos('.', startpos)
+    finally
+      timer_start(100, (_) => {
+        &selection = sel
+      })
+    endtry
+  else
+    try
+      # move the cursor in any mode except operator-pending mode
+      isMoved = Move(cnt)
+    catch
+      echohl ErrorMsg | echomsg substitute(v:exception, '^Vim\%((\a\+)\)\=:', '', '') | echohl None
+    endtry
+  endif
+enddef # }}}
+export def Word(motion: string) # {{{
+  # @param {'w' | 'b' | 'e' | 'ge'} motion
+  var doAsExclusive: bool
+  if motion ==# 'w' || motion ==# 'b'
+    doAsExclusive = true
+  elseif motion ==# 'e' || motion ==# 'ge'
+    doAsExclusive = false
+  endif
+  DoMap(doAsExclusive,
+    function(MoveToKwdChar, [motion]),
+    function(InterpretAsChangeWord, [motion]))
+enddef # }}}
+export def WordInWord(motion: string) # {{{
+  # @param {'w' | 'b' | 'e' | 'ge'} motion
+  var doAsExclusive: bool
+  if motion ==# 'w' || motion ==# 'b'
+    doAsExclusive = true
+  elseif motion ==# 'e' || motion ==# 'ge'
+    doAsExclusive = false
+  endif
+  DoMap(doAsExclusive,
+    function(MoveToCharInWord, [motion]),
+    function(InterpretAsChangeWord, [motion]))
+enddef # }}}
+export def LeftRight(motion: string) # {{{
+  # @param {"\<home>" | "\<end>"} motion
+  if motion ==# "\<home>"
+    DoMap(true,
+      MoveToFirstChar)
+  elseif motion ==# "\<end>"
+    DoMap(false,
+      MoveToLastChar)
+  endif
+enddef # }}}
+var scrolltimerid: number
+export def Scroll(motion: string) # {{{
+  # @param {"\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>"} motion
+  const cnt = v:count
+  var lines: number
+  if motion ==# "\<C-d>" || motion ==# "\<C-u>"
+    # scroll [count] lines or half a screen as default
+    lines = cnt ?? &scroll
+  elseif motion ==# "\<C-f>" || motion ==# "\<C-b>"
+    # scroll [count] screens
+    lines = (cnt ?? 1) * winheight(0)
+  endif
+  # use a timer to activate only last key input on long press
+  timer_stop(scrolltimerid) # no error even if a timer ID does not exist
+  scrolltimerid = timer_start(10, function(SmoothScroll, [motion, lines]))
+enddef # }}}
+export def Search(motion: string) # {{{
+  # @param {'n' | 'N' | '*' | '#' | 'g*' | 'g#' | '[n' | ']n' | '[N' | ']N'} motion
+  if motion ==# 'n' || motion ==# 'N'
+    DoMap(true,
+      function(RepeatSearch, [motion]))
+  elseif motion ==# '*' || motion ==# '#' || motion ==# 'g*' || motion ==# 'g#'
+    DoMap(true,
+      function(StarSearch, [motion, mode(true) =~# '^no']),
+      (cnt, _) => {
+        if cnt < 2
+          # when searching without moving the cursor, select the match and operate on it
+          execute "normal! \<Esc>" # temporarily stop visual mode
+          execute 'normal! gn' .. (visualmode() !=# 'v' ? visualmode() : '')
+        endif
+      })
+  elseif motion ==# '[n' || motion ==# ']n' || motion ==# '[N' || motion ==# ']N'
+    DoMap(true,
+      function(SearchJump, [motion]))
+  endif
+  # avoid `function-search-undo` (do not use the 'x' flag)
+  feedkeys("\<ScriptCmd>v:hlsearch = 1\<CR>", 'n')
 enddef # }}}
