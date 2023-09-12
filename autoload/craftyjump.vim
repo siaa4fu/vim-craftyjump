@@ -92,7 +92,7 @@ def GoToFoldEdge(isForward: bool, lnum = line('.')): bool # {{{
   return isMoved
 enddef # }}}
 def DoNormal(...cmds: list<any>): bool # {{{
-  # @param {list<number | string>} cmds - the list of [count] and normal mode commands allowed to execute
+  # @param {...list<number | string>} cmds - the list of [count] and normal mode commands allowed to execute
   #   [count]: a number greater than 0
   #   left-right-motions: 'h' | 'l' | '0' | '^' | '$' | 'g_' | 'g0' | 'g$'
   #   up-down-motions: 'gk' | 'gj'
