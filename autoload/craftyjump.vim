@@ -4,8 +4,13 @@ scriptencoding utf-8
 def EchomsgException() # {{{
   # note that this function must be called in :catch
   echohl ErrorMsg
-  echomsg v:throwpoint
-  echomsg substitute(v:exception, '^Vim\%((\a\+)\)\=:', '', '')
+  const exception = substitute(v:exception, '^Vim\%((\a\+)\)\=:', '', '')
+  if exception !~# '^E486:'
+    # display v:throwpoint with v:exception if any error occurs except:
+    #   E486: Pattern not found
+    echomsg v:throwpoint
+  endif
+  echomsg exception
   echohl None
 enddef # }}}
 def IsCharUnderCursor(regexp: string, pos = getcursorcharpos(), line = getline(pos[1])): bool # {{{
@@ -115,7 +120,6 @@ def DoNormal(...cmds: list<any>): bool # {{{
     endif
   endfor
   # execute all commands at once without changing the jumplist
-  # errors such as 'Pattern not found' may occur
   execute 'keepjumps normal!' cmdstr
   return true
 enddef # }}}
