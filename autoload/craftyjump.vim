@@ -78,20 +78,29 @@ def IsForwardMotion(motion: string): bool # {{{
   endif
   return isForward
 enddef # }}}
-def GoToFoldEdge(isForward: bool, lnum = line('.')): bool # {{{
-  # @param {bool} isForward - position the cursor at the end of the closed fold if true, the start if false
-  # @param {number=} lnum - the line number of the cursor position
-  # @return {bool} - whether the cursor has been positioned at the edge of the closed fold
+def GoToFoldEdge(isForward: bool, pos = getcursorcharpos(), keepcurswant = false): bool # {{{
+  # @param {bool} isForward - position the cursor at the end line of the closed fold if true, the start line if false
+  # @param {list<number>=} pos - the cursor position
+  # @param {bool=} keepcurswant - if true, position the cursor at the preferred colum for vertical movement (curswant)
+  #                               if false, position the cursor at the edge of the closed fold
+  # @return {bool} - whether the cursor has moved to the edge character or the edge line of the closed fold
+  # {curswant} is the screen column of the file position (for a multi-byte character, the FIRST column in the character)
+  # (like the result of virtcol(), but this returns the LAST screen position occupied by the character at that position)
+  # so, convert {curswant} to the byte index of the character and move the cursor
   var isMoved: bool
   if isForward
-    const lastLnumInFold = foldclosedend(lnum)
+    const lastLnumInFold = foldclosedend(pos[1])
     if lastLnumInFold > -1
-      isMoved = setcursorcharpos(lastLnumInFold, charcol([lastLnumInFold, '$'])) > -1
+      isMoved = cursor([lastLnumInFold,
+        keepcurswant ? virtcol2col(0, lastLnumInFold, pos[4]) : col([lastLnumInFold, '$']),
+        0, pos[4]]) > -1
     endif
   else
-    const firstLnumInFold = foldclosed(lnum)
+    const firstLnumInFold = foldclosed(pos[1])
     if firstLnumInFold > -1
-      isMoved = setcursorcharpos(firstLnumInFold, 1) > -1
+      isMoved = cursor([firstLnumInFold,
+        keepcurswant ? virtcol2col(0, firstLnumInFold, pos[4]) : 1,
+        0, pos[4]]) > -1
     endif
   endif
   return isMoved
@@ -162,7 +171,7 @@ def MoveToKwdChar(motion: string, cnt = v:count): bool # {{{
     prev.line = getline(prev.pos[1])
     prev.isExSelEnd = IsExclusiveSelEnd(prev.pos)
     while true
-      if GoToFoldEdge(isForward, prev.pos[1])
+      if GoToFoldEdge(isForward, prev.pos)
         # go to the edge of a closed fold if the cursor is in the fold before moving
         prev.pos = getcursorcharpos()
         prev.line = getline(prev.pos[1])
@@ -177,7 +186,7 @@ def MoveToKwdChar(motion: string, cnt = v:count): bool # {{{
         # abort if the cursor could not move
         isMoved = false
         break
-      elseif GoToFoldEdge(false, pos[1])
+      elseif GoToFoldEdge(false, pos)
         # always go to the start of a closed fold if the cursor is in the fold after moving
         break
       endif
@@ -407,7 +416,7 @@ def RepeatSearch(motion: string, cnt = v:count): bool # {{{
   const isForward = IsForwardMotion(motion)
   const startpos = getcursorcharpos()
   # skip a closed fold
-  GoToFoldEdge(isForward, startpos[1])
+  GoToFoldEdge(isForward, startpos)
   var isMoved: bool
   for i in range(cnt ?? 1)
     isMoved = DoNormal(motion)
