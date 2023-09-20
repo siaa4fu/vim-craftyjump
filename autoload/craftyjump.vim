@@ -78,29 +78,29 @@ def IsForwardMotion(motion: string): bool # {{{
   endif
   return isForward
 enddef # }}}
-def GoToFoldEdge(isForward: bool, pos = getcursorcharpos(), keepcurswant = false): bool # {{{
-  # @param {bool} isForward - position the cursor at the end line of the closed fold if true, the start line if false
-  # @param {list<number>=} pos - the cursor position
-  # @param {bool=} keepcurswant - if true, position the cursor at the preferred colum for vertical movement (curswant)
-  #                               if false, position the cursor at the edge of the closed fold
-  # @return {bool} - whether the cursor has moved to the edge character or the edge line of the closed fold
-  # {curswant} is the screen column of the file position (for a multi-byte character, the FIRST column in the character)
+def GoToCurswantCol(lnum: number, curswant: number): bool # {{{
+  # @param {number} lnum - the number of the line at which the cursor will be positioned
+  # @param {number} curswant - the preferred column for vertical movement at which the cursor will be positioned
+  # @return {bool} - whether the cursor has moved while keeping curswant
+  # curswant is the screen column of the file position (for a multi-byte character, the FIRST column in the character)
   # (like the result of virtcol(), but this returns the LAST screen position occupied by the character at that position)
-  # so, convert {curswant} to the byte index of the character and move the cursor
+  # so, convert curswant to the byte index of the character and move the cursor
+  return cursor([lnum, virtcol2col(0, lnum, curswant), 0, curswant]) > -1
+enddef # }}}
+def GoToFoldEdge(isForward: bool, pos = getcursorcharpos()): bool # {{{
+  # @param {bool} isForward - position the cursor at the end of the closed fold if true, the start if false
+  # @param {list<number>=} pos - the cursor position
+  # @return {bool} - whether the cursor has moved to the edge character of the closed fold
   var isMoved: bool
   if isForward
     const lastLnumInFold = foldclosedend(pos[1])
     if lastLnumInFold > -1
-      isMoved = cursor([lastLnumInFold,
-        keepcurswant ? virtcol2col(0, lastLnumInFold, pos[4]) : col([lastLnumInFold, '$']),
-        0, pos[4]]) > -1
+      isMoved = setcursorcharpos(lastLnumInFold, charcol([lastLnumInFold, '$'])) > -1
     endif
   else
     const firstLnumInFold = foldclosed(pos[1])
     if firstLnumInFold > -1
-      isMoved = cursor([firstLnumInFold,
-        keepcurswant ? virtcol2col(0, firstLnumInFold, pos[4]) : 1,
-        0, pos[4]]) > -1
+      isMoved = setcursorcharpos(firstLnumInFold, 1) > -1
     endif
   endif
   return isMoved
