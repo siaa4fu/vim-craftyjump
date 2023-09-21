@@ -515,8 +515,9 @@ export def SearchPattern(isForward: bool, pat: string, cnt = v:count): bool # {{
 enddef # }}}
 
 # define mappings
-def DoMap(doAsExclusive: bool, Move: func(number): bool, SpecialMove: func(number, list<number>) = null_function) # {{{
-  # @param {string} doAsExclusive - treat the movement as exclusive if true, inclusive if false
+def DoMap(maptype: string, Move: func(number): bool, SpecialMove: func(number, list<number>) = null_function) # {{{
+  # @param {'linewise' | 'exclusive' | 'inclusive'} maptype - the type that determines the text affected by the operator
+  #   by the type, the motion becomes linewise, characterwise exclusive, or characterwise inclusive
   # @param {func(number): bool} Move
   #   the function that moves the cursor
   #     @param {number} - v:count
@@ -528,11 +529,38 @@ def DoMap(doAsExclusive: bool, Move: func(number): bool, SpecialMove: func(numbe
   var isMoved: bool
   const mode = mode(true)
   if mode =~# '^no'
-    # set the operator to be linewise, characterwise or blockwise (`forced-motion`)
-    execute 'normal!' (mode[2] ?? 'v')
     # temporarily override &selection, then restore it after the operator is done
     const sel = &selection
-    &selection = doAsExclusive ? 'exclusive' : 'inclusive'
+    var o_type = mode[2]
+    if o_type ==# ''
+      # when working with map-specific types (`forced-motion`)
+      if maptype ==# 'linewise'
+        o_type = 'V'
+        &selection = 'inclusive'
+      else
+        o_type = 'v'
+        &selection =
+            maptype ==# 'exclusive' ? 'exclusive'
+          : maptype ==# 'inclusive' ? 'inclusive'
+          : '' # {maptype} is invalid, so an error occurs (E474)
+      endif
+    elseif o_type ==# 'v'
+      # when forcing to work characterwise (o_v)
+      if maptype ==# 'linewise'
+        # linewise motions becomes exclusive
+        &selection = 'exclusive'
+      else
+        # make exclusive motions inclusive and inclusive motions exclusive
+        &selection =
+            maptype ==# 'exclusive' ? 'inclusive'
+          : maptype ==# 'inclusive' ? 'exclusive'
+          : '' # {maptype} is invalid, so an error occurs (E474)
+      endif
+    elseif o_type =~# "[V\<C-v>]"
+      # when forcing to work linewise or blockwise (o_V)(o_CTRL-V)
+      &selection = 'inclusive'
+    endif
+    execute 'normal!' o_type
     const startpos = getcursorcharpos()
     try
       isMoved = Move(cnt)
@@ -542,7 +570,7 @@ def DoMap(doAsExclusive: bool, Move: func(number): bool, SpecialMove: func(numbe
     catch
       EchomsgException()
       # cancel the operator and move the cursor back
-      execute "normal! \<Esc>" # stop visual mode
+      execute "normal! \<Esc>" # stop visual mode started by o_type
       setcharpos('.', startpos)
     finally
       timer_start(100, (_) => {
@@ -560,35 +588,35 @@ def DoMap(doAsExclusive: bool, Move: func(number): bool, SpecialMove: func(numbe
 enddef # }}}
 export def Word(motion: string) # {{{
   # @param {'w' | 'b' | 'e' | 'ge'} motion
-  var doAsExclusive: bool
+  var maptype: string
   if motion ==# 'w' || motion ==# 'b'
-    doAsExclusive = true
+    maptype = 'exclusive'
   elseif motion ==# 'e' || motion ==# 'ge'
-    doAsExclusive = false
+    maptype = 'inclusive'
   endif
-  DoMap(doAsExclusive,
+  DoMap(maptype,
     function(MoveToKwdChar, [motion]),
     function(InterpretAsChangeWord, [motion]))
 enddef # }}}
 export def WordInWord(motion: string) # {{{
   # @param {'w' | 'b' | 'e' | 'ge'} motion
-  var doAsExclusive: bool
+  var maptype: string
   if motion ==# 'w' || motion ==# 'b'
-    doAsExclusive = true
+    maptype = 'exclusive'
   elseif motion ==# 'e' || motion ==# 'ge'
-    doAsExclusive = false
+    maptype = 'inclusive'
   endif
-  DoMap(doAsExclusive,
+  DoMap(maptype,
     function(MoveToCharInWord, [motion]),
     function(InterpretAsChangeWord, [motion]))
 enddef # }}}
 export def LeftRight(motion: string) # {{{
   # @param {"\<home>" | "\<end>"} motion
   if motion ==# "\<home>"
-    DoMap(true,
+    DoMap('exclusive',
       MoveToFirstChar)
   elseif motion ==# "\<end>"
-    DoMap(false,
+    DoMap('inclusive',
       MoveToLastChar)
   endif
 enddef # }}}
@@ -604,10 +632,10 @@ enddef # }}}
 export def Search(motion: string) # {{{
   # @param {'n' | 'N' | '*' | '#' | 'g*' | 'g#' | '[n' | ']n' | '[N' | ']N'} motion
   if motion ==# 'n' || motion ==# 'N'
-    DoMap(true,
+    DoMap('exclusive',
       function(RepeatSearch, [motion]))
   elseif motion ==# '*' || motion ==# '#' || motion ==# 'g*' || motion ==# 'g#'
-    DoMap(true,
+    DoMap('exclusive',
       function(StarSearch, [motion, mode(true) =~# '^no']),
       (cnt, _) => {
         if cnt < 2
@@ -617,7 +645,7 @@ export def Search(motion: string) # {{{
         endif
       })
   elseif motion ==# '[n' || motion ==# ']n' || motion ==# '[N' || motion ==# ']N'
-    DoMap(true,
+    DoMap('exclusive',
       function(SearchJump, [motion]))
   endif
   # avoid `function-search-undo` (do not use the 'x' flag)
