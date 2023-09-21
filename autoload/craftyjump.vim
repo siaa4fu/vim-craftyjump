@@ -52,10 +52,18 @@ def IsExclusiveSelEnd(pos = getcursorcharpos()): bool # {{{
 enddef # }}}
 
 def IsForwardMotion(motion: string): bool # {{{
-  # @param {'w' | 'b' | 'e' | 'ge' | "\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>" | 'n' | 'N' | '*' | '#' | 'g*' | 'g#' | '[n' | ']n' | '[N' | ']N'} motion
+  # @param {string} motion
+  #   up-down-motions: 'k' | 'j'
+  #   word-motions: 'w' | 'b' | 'e' | 'ge'
+  #   scrolling: "\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>"
+  #   search-commands: 'n' | 'N' | '*' | '#' | 'g*' | 'g#' | '[n' | ']n' | '[N' | ']N'
   # @return {bool} - return true if the motion is forward, or false if backward
   var isForward: bool
-  if motion ==# 'w' || motion ==# 'e'
+  if motion ==# 'k'
+    isForward = false
+  elseif motion ==# 'j'
+    isForward = true
+  elseif motion ==# 'w' || motion ==# 'e'
     isForward = true
   elseif motion ==# 'b' || motion ==# 'ge'
     isForward = false
@@ -109,7 +117,7 @@ def DoNormal(...cmds: list<any>): bool # {{{
   # @param {...list<number | string>} cmds - the list of [count] and normal mode commands allowed to execute
   #   [count]: a number greater than 0
   #   left-right-motions: 'h' | 'l' | '0' | '^' | '$' | 'g_' | 'g0' | 'g$'
-  #   up-down-motions: 'gk' | 'gj'
+  #   up-down-motions: 'k' | 'j' | 'gk' | 'gj'
   #   word-motions: 'w' | 'b' | 'e' | 'ge'
   #   scrolling: '<C-e>' | '<C-y>' | 'zz'
   #   search-commands: 'n' | 'N'
@@ -119,7 +127,7 @@ def DoNormal(...cmds: list<any>): bool # {{{
   for cmd in cmds
     if type(cmd) == v:t_number
         || cmd ==# 'h' || cmd ==# 'l' || cmd ==# '0' || cmd ==# '^' || cmd ==# '$' || cmd ==# 'g_' || cmd ==# 'g0' || cmd ==# 'g$'
-        || cmd ==# 'gk' || cmd ==# 'gj'
+        || cmd ==# 'k' || cmd ==# 'j' || cmd ==# 'gk' || cmd ==# 'gj'
         || cmd ==# 'w' || cmd ==# 'b' || cmd ==# 'e' || cmd ==# 'ge'
         || cmd ==# "\<C-e>" || cmd ==# "\<C-y>" || cmd ==# 'zz'
         || cmd ==# 'n' || cmd ==# 'N'
@@ -357,6 +365,25 @@ def MoveToLastChar(cnt = v:count): bool # {{{
       isMoved = DoNormal('g_')
     endif
   endif
+  return isMoved
+enddef # }}}
+# up-down-motions
+def MoveToLine(motion: string, cnt = v:count): bool # {{{
+  # @param {'k' | 'j'} motion
+  # @param {number=} cnt - v:count
+  # @return {bool} - whether the cursor has moved to a line
+  const isForward = IsForwardMotion(motion)
+  const bufferEdgeLnum = isForward ? line('$') : 1
+  var isMoved: bool
+  for i in range(cnt ?? 1)
+    const prevpos = getcursorcharpos()
+    if prevpos[1] == bufferEdgeLnum
+      isMoved = GoToCurswantCol(isForward ? 1 : line('$'), prevpos[4])
+    else
+      isMoved = DoNormal(motion)
+    endif
+    if ! isMoved | break | endif
+  endfor
   return isMoved
 enddef # }}}
 # scrolling
@@ -619,6 +646,11 @@ export def LeftRight(motion: string) # {{{
     DoMap('inclusive',
       MoveToLastChar)
   endif
+enddef # }}}
+export def UpDown(motion: string) # {{{
+  # @param {'k' | 'j'} motion
+  DoMap('linewise',
+    function(MoveToLine, [motion]))
 enddef # }}}
 export def Scroll(motion: string) # {{{
   # @param {"\<C-d>" | "\<C-u>" | "\<C-f>" | "\<C-b>"} motion
