@@ -1,7 +1,7 @@
-vim9script
+vim9script noclear
 scriptencoding utf-8
 if exists('g:loaded_craftyjump') | finish | endif
-const g:loaded_craftyjump = 1
+g:loaded_craftyjump = 1
 
 import autoload '../autoload/craftyjump.vim'
 
