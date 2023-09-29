@@ -524,7 +524,7 @@ export def SearchPattern(isForward: bool, pat: string, cnt = v:count): bool # {{
   # @param {number=} cnt - v:count
   # @return {bool} - whether the pattern has found
   # adding a pattern to the search history is the same as searching forward without moving the cursor
-  @/ = pat # v:searchforward is reset to true
+  @/ = pat # v:searchforward is reset to 1
   histadd('/', pat)
   var isMoved: bool
   if cnt < 2
@@ -533,11 +533,11 @@ export def SearchPattern(isForward: bool, pat: string, cnt = v:count): bool # {{
   else
     # go to the [count - 1]th match
     const startpos = getcursorcharpos()
-    isMoved = RepeatSearch(isForward == IsForwardMotion('n') ? 'n' : 'N', cnt - 1)
+    isMoved = RepeatSearch(isForward ? 'n' : 'N', cnt - 1)
     if isMoved | SetJump(startpos) | endif
   endif
   # avoid `function-search-undo` (do not use the 'x' flag)
-  feedkeys("\<ScriptCmd>v:searchforward = " .. (isForward ? 1 : 0) .. "\<CR>")
+  feedkeys("\<ScriptCmd>v:searchforward = " .. (isForward ? 1 : 0) .. "\<CR>", 'n')
   return isMoved
 enddef # }}}
 
