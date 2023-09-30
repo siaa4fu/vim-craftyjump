@@ -457,9 +457,6 @@ def RepeatSearch(motion: string, cnt = v:count): bool # {{{
       # and that line is the first or last line visible in window
       isMoved = DoNormal('zz')
     endif
-  else
-    # move the cursor back if no pattern is found
-    setcharpos('.', startpos)
   endif
   return isMoved
 enddef # }}}
@@ -564,6 +561,7 @@ def DoMap(maptype: string, Move: func(number): bool, SpecialMove: func(number, l
   #     @param {list<number>} - the starting position before the cursor moves, returned by getcursorcharpos()
   const cnt = v:count
   var isMoved: bool
+  const startpos = getcursorcharpos()
   const mode = mode(true)
   if mode =~# '^no'
     # temporarily override &selection, then restore it after the operator is done
@@ -598,7 +596,6 @@ def DoMap(maptype: string, Move: func(number): bool, SpecialMove: func(number, l
       &selection = 'inclusive'
     endif
     execute 'normal!' o_type
-    const startpos = getcursorcharpos()
     try
       isMoved = Move(cnt)
       if isMoved && SpecialMove != null_function
@@ -620,6 +617,8 @@ def DoMap(maptype: string, Move: func(number): bool, SpecialMove: func(number, l
       isMoved = Move(cnt)
     catch
       EchomsgException()
+      # move the cursor back
+      setcharpos('.', startpos)
     endtry
   endif
 enddef # }}}
