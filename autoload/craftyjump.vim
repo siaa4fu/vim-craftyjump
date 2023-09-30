@@ -490,6 +490,7 @@ def SearchJump(motion: string, cnt = v:count): bool # {{{
   # @param {number=} cnt - v:count
   # @return {bool} - whether the cursor has moved to a match
   const isForward = IsForwardMotion(motion)
+  const startpos = getcursorcharpos()
   # if an error occurs, probably an invalid regular expression is used
   const searchresult = searchcount({maxcount: 0})
   var steps: number
@@ -516,6 +517,15 @@ def SearchJump(motion: string, cnt = v:count): bool # {{{
     isMoved = search(@/, searchflags) > 0
     if ! isMoved | break | endif
   endfor
+  if isMoved
+    const pos = getcursorcharpos()
+    SetJump(startpos)
+    if startpos[1] != pos[1] && pos[1] == (isForward ? line('w$') : line('w0'))
+      # when the cursor moved to another line (which means at least 2 matches were found)
+      # and that line is the first or last line visible in window
+      isMoved = DoNormal('zz')
+    endif
+  endif
   return isMoved
 enddef # }}}
 export def SearchPattern(isForward: bool, pat: string, cnt = v:count): bool # {{{
