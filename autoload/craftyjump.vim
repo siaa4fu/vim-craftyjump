@@ -410,9 +410,7 @@ def SmoothScroll(motion: string, cnt = v:count) # {{{
     keys = ["\<C-y>", 'gk']
   endif
   const step = <number>get(g:, 'craftyjump#scrollstep', 3) ?? 1
-  # use a timer to activate only last key input on long press
-  timer_stop(scrolltimerid) # no error even if a timer ID does not exist
-  scrolltimerid = timer_start(10, (_) => {
+  const DoScroll = (..._) => {
     while n > 0
       # the cursor may move when scrolling window in the following cases
       #   the cursor is at the first line visible in window when scrolling downward
@@ -433,7 +431,14 @@ def SmoothScroll(motion: string, cnt = v:count) # {{{
       # move the cursor to the first non-blank character of the line
       DoNormal('^')
     endif
-  })
+  }
+  timer_stop(scrolltimerid) # no error even if a timer ID does not exist
+  if n < step
+    DoScroll()
+  else
+    # use a timer to activate only last key input on long press
+    scrolltimerid = timer_start(10, DoScroll)
+  endif
 enddef # }}}
 # pattern-searches
 def RepeatSearch(motion: string, cnt = v:count): bool # {{{
