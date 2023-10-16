@@ -23,22 +23,23 @@ enddef # }}}
 def GetWordUnderCursor(forceCword = false): string # {{{
   # @param {bool=} forceCword - always return <cword> even if the selection exists in visual mode
   # @return {string} - <cword> or the selection in visual mode
-  var cword: string
+  var word: string
   if forceCword || mode() !~# "[vV\<C-v>]"
-    cword = expand('<cword>')
+    word = expand('<cword>')
   else
-    const RestoreReg_unnamed = function('setreg', ['', getreginfo('')])
-    const RestoreReg_v = function('setreg', ['v', getreginfo('v')])
+    final restorefuncs: list<func> = []
+    # save unnamed and 'v' registers
+    add(restorefuncs, function('setreg', ['', getreginfo('')]))
+    add(restorefuncs, function('setreg', ['v', getreginfo('v')]))
     try
       # visual mode is stopped
-      normal! "vy
-      cword = @v
+      execute 'silent noautocmd normal! "vy'
+      word = @v
     finally
-      RestoreReg_unnamed()
-      RestoreReg_v()
+      for Restore in restorefuncs | Restore() | endfor
     endtry
   endif
-  return cword
+  return word
 enddef # }}}
 def IsExclusiveSelEnd(pos = getcursorcharpos()): bool # {{{
   # @param {list<number>=} pos - the cursor position
