@@ -7,7 +7,7 @@ let s:samplelines = readfile('test/pattern-searches.sample')
 Context motions simply move the cursor
   Before
     " use line 1 to 3
-    call InitTestBuffer(s:samplelines[0 : 2])
+    call g:InitTestBuffer(s:samplelines[0 : 2])
     let @/ = 'aaa'
   End
   def s:moveWhole(motion: string, isExSelEnd = false)
@@ -610,7 +610,7 @@ End
 Context motions search under the cursor
   Before
     " use line 1 to 3
-    call InitTestBuffer(s:samplelines[0 : 2])
+    call g:InitTestBuffer(s:samplelines[0 : 2])
   End
   def s:starWhole(testmode: string, motion: string)
     # search forward from the current position to the end of the buffer, or backward to the start
@@ -998,7 +998,7 @@ End
 Context motions are used after operators
   Before
     " use line 1 to 3
-    call InitTestBuffer(s:samplelines[0 : 2])
+    call g:InitTestBuffer(s:samplelines[0 : 2])
     let @/ = 'aaa'
   End
   Context d{motion} - delete
